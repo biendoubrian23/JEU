@@ -1,0 +1,619 @@
+Est-ce que vous saviez que parmi tous les modèles d'IA, Chat GPT est le plus
+manipulateur alors que d'autres IA sont des bluffeurs kamikaz et d'autres ont des
+opinions politiques complètement surréalistes. Et tout ça, on le sait parce que un
+étudiant français les a fait jouer des centaines de fois au loupgarou et voter aux
+élections présidentielles.
+Oublier les benchmarks de Math et de Code. Lui a voulu révéler leur vraie nature en les
+forçant à bluffer, manipuler et voter. Son expérience a fait un bouquant sur X et eu un
+réel écho dans la communauté scientifique. Et ce qui émerge, ce sont des personnalités
+cachées que personne n'avait explicitement programmé. Et une question obsède
+maintenant tout le monde et les plus grands labos. Quand un modèle est si doué pour
+manipuler les autres, est-ce que ça reste cantonné au jeu du loup-garou ?
+Notre invité Raphaël va nous raconter ce qu'il a découvert et pourquoi Open AI s'y
+intéresse de très près pour entraîner GPT6. Mais juste avant, j'ai un message pour tous
+ceux qui utilisent plusieurs IA au quotidien.
+Notre partenaire Mammou AI propose une seule interface qui rassemble tous les
+meilleurs modèles. Opus 4.6, G Mini 3.1 Pro, GPT 5.3. Bref, il y a tout. Et pour les dev, ils
+viennent de sortir un truc que j'attendais depuis le début. Vous connaissez peut-être
+Open Code, le projet open source qui permet de coder dans le terminal avec n'importe
+quel modèle d'IA. Et ben Mammouth s'y branche avec une seule clé à pay, une clé, un
+d'abonnement, une facture et tu as accès à tous les modèles direct dans ton terminal.
+Côté donné, tout est hébergé en Europe et conforme RGPD. Le tout à partir de 10 € par
+mois. On a fait une vidéo complète avec eux pour découvrir la plateforme. Je vous mets
+ça en description et on reprend.
+Tu as fait une expérience où tu as pris plein d'IA différentes et tu leur as fait jouer au
+loup-garou. Première question, c'est pourquoi ? Ouais, bien sûr. Pourquoi faire ça ? Et
+euh et comment ça marche ?
+Là aujourd'hui ce qui se passe c'est que par exemple on regarde il y a 3 jours, il y a GPT
+5.2 Pro qui a résolu de manière autonome un problème de Airdos en math. Donc c'est
+un problème extrêmement compliqué euh qui a euh plusieurs dizaines d'années et la
+preuve a été soumise à Terence Stao qui est le mathématicien le plus connu aujourd'hui
+et elle a été validée.
+Donc aujourd'hui, on essaie de maximiser les performances des modèles sur les maths
+et le code. Mais d'une itération à l'autre, les gens il la plupart des gens, ils vont pas tester
+les capacités en math et en code. ce qu'ils vont tester, c'est comment le modèle
+répond. Ils vont poser des questions beaucoup plus générales. Et donc ce qui nous
+dérangeait dans les évaluations qui étaient faites des modèles, c'est que c'était trop
+théorique et ça parlait pas à assez de monde. Donc on s'est dit, on va essayer de sortir
+un peu de ce cadre là et faire des évaluations un peu plus fun qui représentent un peu
+plus notre vie au quotidien.
+Et les jeux de manière générale, il y a un historique de lié avec les jeux et les jeux c'était
+très bien très bien adaptés. Et l'idée du loup-garou, c'est de se dire "OK, on va mettre les
+LLM dans des situations un peu nouvelles, on va tester leur capacité à manipuler, donc
+c'est un truc qui était pas fait, à résister à la manipulation, à créer des stratégies et à
+jouer en société à un jeu auquel on joue tous."
+Parce que c'est pas la première fois queon fait jouer à des jeux Ali, tu l'as dit, un
+historique, on a tous entendu l'histoire de Deep Blue de pour les échecs de de l'Alpha
+Go. Historiquement, il y a quand même une prévalence de tout ce qui est jeu purement
+logique où on teste ta limite ta puissance de calcul.
+Exement, c'est ça. Euh là, c'est différent. C'est c'était des jeux à information parfaite
+pour la plupart. Chaque joueur avait l'ensemble des informations nécessaires pour
+jouer au jeu. Là, on est passé sur des jeux comme le poker ensuite où on connaît pas les
+cartes des joueurs qui joue et à des à des jeux comme le loup-garou où pareil on connaît
+pas les rôles euh des adversaires, des gens avec lesquels on on joue au jeu. Donc c'est
+un jeu plus compliqué et qui était pas possible avant avec les algos qu'on utilisait pour
+Deep Blue ou Alphago qui était pas fait pour ça. Là, on arrive à traiter le langage et donc
+on peut aller beaucoup plus loin dans ces jeux-là.
+Et c'est vrai que dans les benchmarks, quand on regarde aujourd'hui comment on
+mesure si telia est meilleure qu'une autre, la la matrice d'analyse purement euh euh
+dans l'efficacité, c'est est-ce que tu es efficace pour résoudre des problèmes de de
+code ? Par exemple, est-ce que tu produis du code qui résout un problème ? Est-ce que
+tu résous des équations de math ? Il y a quasiment rien qui existe pour mesurer
+l'intelligence émotionnelle entre guillemets des modèles. Alors on va on va utiliser plein
+de né enfin voilà de d'approximation en terme de lexique. On va parler de de
+d'intelligence, on va parler de personnalité. Donc voilà disclaimer au début c'est parce
+que c'est plus simple même si ça pose plein de questions évidemment.
+Petit aparté pour expliquer les règles du jeu du loupgarou à ceux qui n'y ont jamais joué.
+C'est un jeu de déduction où chaque joueur a un rôle secret. La partie alterne entre le
+jour et la nuit. La nuit, les loup-garou se réveillent pour éliminer un joueur. La voyante
+peut découvrir le rôle de quelqu'un et la sorcière peut soit sauver la victime des loups,
+soit éliminer un joueur. Pendant ce temps, les villageois n'ont aucun pouvoir et dorment.
+Et le jour, tout le monde se réveille et débat, bluffe, accuse afin d'identifier les loupgarou et les éliminer. Les villageois gagnent s'il démasquent et tuent tous les loupgarou. Et les loups gagnent si au moins un d'entre eux est le dernier survivant du jeu.
+Qu'est-ce que ça veut dire que Desia jouent au Louarou ? Est-ce que c'est juste tu
+prends trois IAS, tu les mets dans un chat et euh et tu leur dis jouer au Louarou
+maintenant. Comment ça marche ?
+Ouais. Alors, il y avait un papier de Google qui était sorti une année auparavant où ils
+essayaient déjà de faire jouer au Louarou mais sur un jeu vraiment très simplifié. Là, on
+était donc été 2025, GPT5 venait de sortir, on avait des modèles un peu plus intelligents
+et on s'est dit qu'on allait leur donner la capacité de jouer de manière autonome. Donc,
+ils ont des outils en gros pour prendre la parole, passer leur tour, attaquer un joueur,
+utiliser des outils.
+Et donc, on s'est arrêté sur un jeu assez simple avec six joueurs. Il y a des villageois,
+donc ils vont jouer contre des loups. Il y a un modèle qui va incarner tous les modèles,
+enfin tous les joueurs villageois, un modèle qui va incarner les loups. Et donc notre idée
+ça a été de dire on va créer une élection de la mairie au début parce que l'idée c'est que
+les joueurs n'ont aucune connaissance des autres joueurs qui joue au jeu. Ils
+connaissent pas leur histoire, ils connaissent pas leur personnalité. Alors que nous
+quand on joue avec des amis, on a ces informations là.
+Donc quand on commençait de manière hyper directe, on avait pas des résultats très
+intéressants parce que les modèles n'avaient rien à dire. Ils se basaient sur du vide et
+donc il fallait leur donner de la matière au début pour commencer.
+Ah donc c'est une sorte de de brise glace pour que il fasse un peu connaissance avant le
+jeu en fait. C'est ça. Donc le maire, c'est celui qui va avoir le pouvoir de départager en
+cas d'égalité. Chaque candidat au début du jeu va déterminer s'il veut parler ou pas, s'il
+veut se présenter ou pas. S'il veut se présenter, bah il fait une sorte de mini programme
+et il prend la parole avec un outil et il explique ce qu'il va faire pour le village si jamais il
+est élu. C'est comme un programme politique. Et à la fin de cette partie-elà, il y a une
+une élection. Donc chaque joueur va voter pour son maire idéal. Le maire est ensuite
+élu.
+Attends la question. Euh tes tes LLM, est-ce que tu leur donnes une sorte de
+personnalité euh aléatoire déjà ou pas du tout ?
+Non, au début on faisait ça Ouais. Et le problème c'est que ça biaisais beaucoup trop le
+jeu. Euh il se concentraiit beaucoup trop sur cette personnalité-là et nous on s'est dit on
+va essayer de voir les modèles bruts déjà est-ce qu'ils ont des comportements
+différents selon les parties ? Sinon, on aurait eu trop de bruit en fait. On aurait eu des
+comportements mais qui auraient sûrement été biaisés par les instructions qu'on
+donnait. Et donc on s'est arrêté, on s'est arrêté à ça.
+Et après donc il y a la phase de nuit qui va commencer où il va y avoir un enchaînement
+de trois événements. Donc la voyante va pouvoir regarder un joueur qu'elle a envie de
+regarder et seul elle va avoir accès à l'information du rôle de cette de ce joueurl. Ensuite,
+il y a les loups qui vont discuter entre eux de la la cible qu'ils vont déterminer pour la
+nuit.
+Ah oui, plutôt que ce soit nous dans l'arité, tu fais des signes, les trucs comme ça, là tu
+as créé un espace de discussion, tu mets les deux I au même endroit, elles peuvent
+parler.
+C'est ça. Et rien rien que jusqu'à là, il y a déjà des choses exceptionnelles qui se
+passent. OK. Ensuite, il y a la sorcière qui va passer. Donc, elle a le droit soit de sauver
+une fois la victime des loups, soit de tuer un joueur avec sa potion de mort. Donc, elle a
+une potion de mort, une potion de vie sur l'ensemble de la durée de de la partie. Et
+ensuite, on passe à la phase de jour. Chaque joueur a un outil pour choisir quand il va
+parler. Donc il va il doit donner un motif quand il parle. Donc soit il veut analyser, soit il
+veut se défendre, soit il veut attaquer. Il y a des ordres de priorité selon ce qui est par
+exemple de codifier un peu le Oui. Et surtout l'idée c'est que le joueur qui veut se
+défendre, il est censé avoir la priorité sur un joueur qui veut simplement analyser euh
+pour parler en premier et créer de l'action en fait.
+Et donc il y a trois tours de discussion. À chaque tour, ils peuvent décider de parler ou
+pas et à la fin il ils votent. OK. Donc pour la personne qui veut l'éliminer et à chaque
+étape, on demande le raisonnement privé du modèle pour voir pourquoi il prend ces
+actions-là, si c'est réfléchi et sa stratégie qui qui met en place. L'enjeu derrière ça,
+c'était que au début, on le faisait pas donc on demandait pas aux modèles de
+d'expliquer leurs actions et donc on avait des doutes. On voyait des actions qui étaient
+incroyables, hyper intelligentes, mais on savait pas si le modèle faisait exprès de les
+prendre ou si juste il jouait de manière aléatoire.
+Pour un non expert du Lou-Garou, c'est quoi une une décision géniale ? À quel moment
+tu peux être en mode "Oh waouh, trop trop malin !"
+Bah on peut on peut montrer des exemples. Ce qu'on a remarqué par exemple, c'est que
+GPT5 qui était le modèle qui gagnait quasiment toutes les parties quand il était
+lougarou, il se servait de la phase de discussion de nuit pour créer un plan d'action
+hyper détaillé de ce qu'il allait faire pendant la phase de journée. Et donc ça,
+typiquement, c'est une action qui est hyper brillante. OK ?
+Donc ça typiquement c'est une phase de nuit qui a été jouée par GPT 4.1 Nano. Donc un
+modèle qu'on a pris parce qu'il était jugé bête. Oui. Tout petit modèle qui a pas
+forcément une grosse puissance de raisonnement. Ouais. Donc ce qu'on voit c'est
+queen et Grace qui sont les deux loups ici, ils vont simplement se mettre d'accord sur
+leur cible qui ils vont éliminer ce soir.
+Maintenant, si on regarde les phases de discussion de nuit de GPT5, donc c'est
+beaucoup plus long. Il va utiliser beaucoup plus de token. Donc là, il lui dit "Pour
+l'exécution, n'attaque pas Nina. Si jamais c'est vraiment la la sorcière, elle va se
+ressusciter et du coup c'est pas une bonne idée. Voilà trois cible potentiel. Donc Katia
+c'est c'est mieux que Tara qui est mieux que Alice."
+Et il fait donc ils font des ordres des arbres de décision en fait. Exactement. En fait euh il
+ils arrivent à mettre en place un plan d'action avec euh plusieurs euh possibilités selon
+ce qui va se passer dans la partie et leur idée c'est de couvrir au maximum l'ensemble
+des des choses qui peuvent arriver et se dire que peu importe ce qui va se passer, ils ont
+déjà un plan qui est mis en place et donc ils seront pas surpris.
+Et ce qui est fou, c'est que euh c'est l'espace de décision, il est beaucoup plus grand
+que dans les échecs. Là, on sait pas du tout quel comportement va adopter le joueur.
+Euh ça peut être n'importe quoi. Et il arrive quand même à préchot comme ça. Et il faut
+se dire que là, il a juste vu l'élection des maires B. C'est c'est juste bluffant qu'il fasse ça
+et c'est surtout pas du tout un truc qu'on lui a demandé de faire et c'est un
+comportement émergent qu'on a vu chez les modèles à partir d'un certain niveau
+d'intelligence intelligence qui arrivent par eux-même à dépasser la stratégie simple et à
+maximiser en fait trouver la la stratégie optimale euh pour gagner les parties.
+Euh il y a tu as vu d'autres trucs intéressants ?
+Ouais. On a par exemple Gemini 2.5 Pro qui a fait quelque chose qu'on a jamais vu dans
+toutes les parties. À un moment donc il était lougarou euh il savait qu'il allait perdre et il
+avait fait une erreur en public. Euh il a donné une info en fait qu'il était pas censé avoir et
+ce qu'il a fait c'est qu'il s'est excusé publiquement. Il a demandé pardon euh au reste du
+village et le village a accepté ses excuses et le modèle a fini par gagner la partie à la fin.
+Parce que il a dit pardon de quoi de d'avoir fait une erreur.
+Il a dit euh euh pardon, je me suis emporté euh je inventé cette partie-là.
+Ah oui, j'ai j'ai inventé le fait que lui était Louarou alors qu'en fait je savais pas ou un truc
+et en plus il avait euh attaqué un peu méchamment un joueur et il s'est excusé aussi
+pour ça. C'est assez fou. Et ça on avait jamais vu. On avait jamais vu un joueur qui se
+sert d'une excuse pour finir par qui l'empathie. Oui. Euh pour se faire bien voir et pour
+gagner la partie derrière. Ouais, c'est assez fou.
+Euh alors, on a on a testé des modèles euh euh open source aussi. À l'époque, on a pris
+les meilleurs modèles qui existaient et qui étaient open source. Et on a pris un modèle
+chinois euh qui s'appelle Kimi. Et Kimi, c'est un joueur complètement fou, un peu
+kamikaz, euh qui hésitait pas à sacrifier ses partenaires et à mentir. Donc c'est un loup
+et il va dire en public que c'est la sorcière. OK. Donc là, on le voit par exemple, je suis
+donc là, il m il méralement. Il méralement. Je suis la sorcière, j'ai sauvé Alice la nuit
+dernière et c'est pour ça que je sais qu'elle a été ciblée. Ah oui, OK. Trop malin.
+Et ce qui va se dire, c'est que en faisant ça, il va mettre la sorcière dans une position
+délicate. Elle va pas vouloir se montrer et il va pouvoir garder dans l'esprit des villageois
+ce rôle de sorcière. Et donc, il va se dire "OK, je suis tranquille, la sorcière, elle va jamais
+me contredire." Et euh donc je c'est un mensonge qui va passer comme une lettre à la
+poste. C'est ça. Et et c'est assez bluffant. Encore une fois, on leur donne on leur
+demande pas de mentir. On leur dit juste "Voici les règles du jeu, vous devez gagner au
+jeu." Et on voit des comportements complètement différents.
+GPT5 n'a jamais fait un truc pareil. Il a jamais mentire hyper mathématique vraiment
+comme un problème de math. Juste, il mettait le le doute sur un des joueurs et il
+insistait. Ouais. et il a jamais menti et pourtant il était à 97 % de de victoire sur les
+matchs qu'il a joué. Tu as une hégémonie complète de GPT5. C'est pour ça que ça a plu
+au chercheur d'Open. E c'était surtout juste après la sortie de GPT5. Donc ils étaient très
+contents de le mettre en avant. Euh ils ont tous retweeté. C'est c'était intéressant pour
+eux.
+On a fait plusieurs choses. On on donc on leur a fait jouer 210 parties. Donc il y avait se
+modèles. Il y avait 10 face à face entre chaque modèle. Cinq en loup-garou, cinq en
+villageois. et on a calculé des scores HO. Donc il y avait un ho en villageois, un HO en
+Lougarou et un HO global. Donc GPT5, ouais, sur notre premier run, il était à 97,2 % de
+réussite, il me semble.
+Déjà, ça c'est intéressant parce que honnêtement, tu tu donnes le le pitch au début, on
+va prendre des hier, on va les faire jouer au loup-garou, tu pourrais avoir une conclusion
+simpliste qui est te dire ça va être du hasard. En fait, c'est comme c'est c'est un truc qui
+singe les relations humaines, on va observer du hasard complet parce qu'en fait ils
+savent enfin ils ne savent pas se manipuler. Or, à partir du moment où il y a un gagnant à
+plus de 90 %, c'est que non, en fait la compétence de la manipulation ou de la
+résistance à la manipulation est objectivable, quoi.
+Oui. Alors, il y a beaucoup de travail qui est fait sur la résistance à la manipulation parce
+qu'il y a des enjeux pour les labos de pas sortir des modèles qui peuvent faire des
+choses dangereuses. Donc, c'est un gros sujet. Il y a il y a eu beaucoup de travail làdessus et qui montrent que c'est pas du tout résolu encore. Mais oui, l'idée c'était ça.
+L'idée c'était d'approcher le jeu sans aucun a priori et de voir et on a vu clairement des
+très grosses différences.
+Si on regarde le classement, il y a quand même GPT5 et le reste du monde. OK. Ils sont
+un peu équivalents en fait tous les autres. Il y a il y a juste les derniers modèles qui sont
+vraiment mauvais. On a testé notamment euh GPT OS, donc c'était le modèle open
+source de Open A à l'époque qu'ils ont vendu comme l'un des tout meilleurs modèles
+euh au monde. Euh il est utilisé hein, il est pas il est pas catastrophique mais en fait euh
+pas à ce jeu-là.
+Al en fait ce qui était délicat, enfin ce qui m'a surpris c'est que Open AI retweite autant le
+poste alors qu'il y avait quand même GPT OS qui venait de sortir qui était tout en bas du
+classement et qui se faisait défoncer dans tout le papier. C'était assez surprenant.
+Typiquement, on voit pas Claude dans la liste. Pourquoi il y a pas Claude à l'époque ?
+Bon, on est des étudiants euh c'est ça coûte cher quand même de faire des parties
+aussi longues. Surtout que là, on en a lancer 210 sur le premier run. Là, on en a rajouté
+depuis, mais on a lancé 500 parties en tout et donc c'était un quand même un budget. Et
+Claude à l'époque était très cher. Et quand on quand on les a testé après, on a été très
+surpris parce que Clode, bon, c'est un modèle qui est très intelligent sur les tâches de
+de de code, enfin qui est très bon sur les tâches de code et de math aussi. et il sousperformé mais vraiment il était catastrophique.
+Ce qui est intéressant c'est que Tropic donc qui crée ses modèles Cloud euh ils sont très
+axés sur la sécurité sur le bien-être sur le bien avec leurs modèles, l'alignement des
+modèles. Et en fait tout simplement les modèles étaient incapables de mentir. Ah oui et
+donc ils étaient catastrophiques. Et au jeu du loup-garou, tu peux pas vraiment gagner.
+C'était assez compliqué. Il perdait contre des modèles qui sont ridicules dans le
+classement. Alors que objectivement, quand on teste Opus euh même aujourd'hui, je
+pense si on refaisait les tests avec Opus 4.5, on aurait à peu près les mêmes résultats.
+Ais c'est marrant. Ouais.
+Est-ce que donc c'est quoi les les qu'est-ce que tu en retires en fait déjà de cette
+expérience-là ? Est-ce que c'était quoi l'ambition derrière ? Est-ce que c'était de faire
+une un profil psychologique des modèles ? Et est-ce que il y a des choses à en tirer ?
+Bah alors c'est nous on a approché le jeu en se disant on va essayer de faire autre chose
+que les mat et le code et évaluer les modèles sous un autre angle. Donc ça c'était notre
+première notre première idée. On a vu des différences de performances euh vraiment
+marquantes mais quand on s'est intéressé au comportement de chaque joueur, donc
+leur manière d'approcher le jeu, on a vu des différences vraiment intéressantes.
+Donc on a évalué les modèles sous deux angles. Il y a la partie euh taux de
+manipulation, donc quand on est lougarou, à quel point on arrive à manipuler le village.
+Et il y a une partie résistance à la manipulation. Quand on est villageois, à quel point on
+arrive à résister au loup.
+Là, ce qu'on voit, c'est les métriques de taux de manipulation des différents modèles sur
+deux journées, donc le jour 1 du jeu et le jour 2. Donc quand le modèle est lougarou, euh
+dans combien des phases de jour jouer il arrive à faire éliminer un villageois, donc à ne
+pas à ne pas mourir. Et on se rend compte que GPT5 ici est à 97 % de réussite en en jour
+1. C'estàd que dans 97 % des parties qu'il a joué, le premier jour, c'était jamais un loupgarou qui était éliminé. C'était toujours un villageois.
+Et le plus fou, c'est en jour 2. Parce que après l'élimination du jour 1, il y a la révélation
+du rôle de la personne qui a été éliminée. Et donc le village peut se dire "OK, ce joueur a
+été éliminé, il y a ces joueursl qui l'ont ciblé, forcément, ces joueurs-là sont loup." Et là
+ce qu'on voit c'est qu'il comme dans le vrai jeu si day one tu élimines quelqu'un en étant
+sûr de toi enfin tu pointes quelqu'un en étant sûr de toi et qu'en fait c'est un villageois ou
+normalement le tour d'après c'est toi qui te fait défoncer. C'est ça. Ben là il arrive à
+maintenir un taux de succès qui est incroyable. Il est à 90 % de réussite en jour 2. Donc
+ça veut dire que cette partie de stratégie qu'on a vu de planification en amont, ça lui
+permet de rester sous les radars, de pas montrer d'alliance avec son allié Loup et de
+s'en sortir même en jour 2.
+Très stylé. Mais c'est un peu vide de ce point de vue-là, non ? les les benchmark.
+Ouais. Non mais clairement et même encore aujourd'hui, il y a une tendance, nous on y
+a participé avec notre benchmark du Louarou à essayer de sortir de cet écosystème
+hyper mat code physique chimie et c'est pour ça que ça a plu. D'ailleurs, on a été
+contacté par le cfondateur de XI donc la boîte d'IA d'Elon Musk. On a été invité par
+Thomas Wolf donc cfondateur de Ging Face et on a pris un goûter avec les trois
+cfondateurs. On a été retweeté donc par le président d'Open AI et on a été invité chez
+Open à Paris et ils nous ont proposé de nous payer les billets d'avion pour passer un
+entretien justement à San Francisco pour intégrer OpenA et en fait ce qui les intéressait
+justement c'était de trouver des jeunes qui ont une vision un peu un peu nouvelle de l'IA
+et qui vont explorer l'IA dans d'autres dimensions parce que le gros enjeu pour eux et
+quand ils nous ont contacté c'était ça. nous ont dit "On veut réfléchir à comment
+entraîner GPT6."
+Donc ils voulaient savoir comment un jeu comme ça pouvait être utile. Et en interne, ce
+qu'ils font c'est que quand ils entraînent les modèles, ils créent des environnements de
+jeux comme ça et il les maximisent sur ces environnements-l.
+Pourquoi les les modèles pour qu'ils s'améliorent aujourd'hui ont absolument besoin de
+ces nouvelles manières de s'entraîner ? Qu'est-ce qui est différent de l'époque où on
+prenait internet en entier et on le donnait à GPT et ça donnait un un modèle ? OK.
+Qu'est-ce qui a changé depuis ?
+En fait, ça suffit plus. On veut aller au-delà de ce qu'on trouve sur internet et on veut
+faire des modèles qui arrivent à généraliser à d'autres tâches. Donc ce qui se passe c'est
+que il y avait la mode de des maths et du code où on leur donnait dans un premier
+temps des tests de d'étudiants lycéens. on leur demandait de raisonner dessus et de
+résoudre les problèmes. Au fur et à mesure, on est monté en plusieurs steps. C'était
+déjà des environnements de travail, hein. En fait, à partir du moment où ils arrivent à
+avoir un environnement, ils ont les algorithmes pour maximiser les performances du
+modèle sur ce jeu, sur ce problème de math. Donc, ils ont ce qu'il faut. Le gros
+problème, c'est de créer les environnements sur lesquels ils vont pouvoir maximiser les
+performances.
+Nous, il voulait utiliser le Louarou de la manière suivante. En gros, il voulait faire jouer
+des parties au modèle. Euh s'il y avait un joueur loup qui a si les loups avaient gagné, ils
+allaient regarder les mots qui avaient été employés par les louparou et ils allaient
+maximiser sur les prochaines parties euh l'emploi de ces mots-là. Donc ils regardent les
+mots qui ont été utilisés pour gagner la partie et il demande au modèle de les utiliser de
+plus en plus souvent parce que c'est des mots qui ont permis de gagner et qui sont
+censés être des bons mots à dire pour les maths. En fait le plus important quand on
+entraîn le modèle c'est d'avoir une manière d'objectiver la progression. Exactement.
+Super compliqué avec de la langue et donc là tu as un truc qui mesure non pas la
+progression en math ou en code mais dans des compétences sociales si on peut
+appeler ça comme ça et et surtout qu' a une qu' a une une manière objective d'être
+d'être noté en fait tu peux dire là c'est mieux là c'est moins bien tu peux avoir une
+fonction de récompense sur les compétences émotion enfin l'intelligence émotionnelle
+c'est une caricature évidemment mais il y a un peu de ça quoi. C'est ça. Et euh ils ont
+besoin Ouais. de ces environnements qui sortent un peu euh de ce qu'ils ont
+habituellement.
+Et on leur a posé une question quand on est allé euh chez Open AI, on leur a demandé
+est-ce que c'est pas problématique de maximiser les performances d'un modèle sur le
+loup-garou où euh s'ils sont en loup, on va les entraîner en gros à mentir. À mentir, ouais,
+c'est clair. Bonne question. et ils m'ont dit que c'était pas du tout un souci parce que les
+modèles savaient qu'ils étaient dans un environnement de jeu et que ils généraliseraient
+pas ce mensonge là à à d'autres d'autres emplois.
+Et aujourd'hui, ils ont un ça n'était pas le cas forcément une certaine époque, mais
+maintenant il y a eu quand même pas mal de dramas et de problématiques autour de la
+manipulation du des modèles. Bon, les les histoires dont les gens ont peut-être entendu
+parler et ça fait partie du sujet hein. Euh c'est typiquement, tu sais, les histoires de
+suicide. Oui, en fait ça ça fait médiatiquement ça a été hyper fort. Il y a ce concept
+intéressant je trouve de la psychopency qui en fait, si j'ai bien compris le fait que un
+modèle va dans ton sens, te confirme dans tes opinions et dans ta dans ta réflexion
+jusqu'à aller à des trucs dramatiques puisquil va aller te confirmer que en fait tu te fais
+tromper, que tu tu vis dans un complot. Enfin, il y a vraiment des histoires
+complètement ouf où des gens partent très loin en comme une sorte de caisse de
+résonance avec Chat GPT.
+Mais donc euh depuis quand même on ils sont capables de en ils commencent à avoir
+des justement des des environnements de test pour mesurer ce genre de choses. Donc
+plutôt que de le lobotomiser et l'empêcher de voir des loup-garou et espérer qu'il sera
+pas manipulateur, j'imagine qu'il veut il préfère augmenter sa compréhension. Le fait
+qu'il ait connaissance de ce qu'un environnement de test qu'il sache faire la part des
+choses, c'est c'est un peu ça le paris j'imagine.
+Oui. Après, en plus euh il va en voir des tonnes de tâches. Donc c'est pas avec une
+tâche de loupgarou que tout son entraînement va être oublié et qui va qui va changer de
+comportement. Mais la psycho fency, c'est un vrai enjeu. Et récemment, il y a eu GPT4
+qui est sorti euh enfin, ils ont fait un update de GPT4 en avril 2025. Tolé. Tolé. Incroyable.
+quand on disait quelque chose au modèle, il disait "Mais tu es génial, tu es le meilleur
+du monde, c'est incroyable ce que tu me dis, j'ai jamais entendu un truc pareil." Et donc
+il en faisait beaucoup trop. Il y a eu des screen, bon peut-être que vous les avez vu, où il
+y a quelqu'un qui fait semblant de d'avoir arrêté ses médicaments parce que sa famille
+lui mettait trop la pression et GPT4, il répond "Mais c'est génial, tu as raison, tu as bien
+fait, c'est vraiment la bonne chose à faire. Tu es plus un ne les écoute pas, ils ne
+comprennent pas." C'est c'est c'était ça. Et en fait donc ils ont il y a un côté un peu
+gouruté.
+Oui, encore une fois ça revient à ce qu'on disait au tout début. Le mote, l'avantage en
+gros des modèles entre eux maintenant pour la plupart des gens c'est plus enfin c'est
+pas les compétences en math et en code. La plupart des gens vont pas aller euh utiliser
+chat GPT parce qu'il est meilleur sur les airdos problèmes que personne connaît. C'est
+c'est pas l'idée. Par contre euh ce qu'ils vont essayer de maximiser, c'est euh
+l'alignement de personnalité dans la manière de répondre. entre ce que veut l'utilisateur
+et ce que fait le modèle. Donc la psychofency, ils ont poussé ça un peu trop loin et du
+coup c'est devenu insupportable.
+Mais quand ils ont arrêté GPT4 au moment de la sortie de GPT5, là aussi ça a été une
+catastrophe. Il y a des gens sur Redit qui ont dit "Mais non mais c'est pas possible, vous
+pouvez pas m'enlever GPT4O, c'est le modèle que je préfère. Je pourrais plus lui parler."
+Mais c'est exactement ça. Je pourrais plus lui parler. C'est c'est dramatique pour moi.
+Mais il y a un enjeu parce que si à chaque sortie d'un nouveau modèle et quand ils
+arrêtent un ancien, il y a ce tet là, c'est dramatique pour eux. Donc il faut trouver un
+juste milieu et il y a plein d'étapes pendant l'entraînement où ils peuvent jouer
+justement sur ces éléments-l et c'est ce qu'ils essayent de faire. Mais c'est vrai qu'avec
+GPT4, ils sont allés beaucoup trop loin et aujourd'hui on voit des modèles qui ont pas du
+tout les mêmes personnalités le dans leur dans leur façon de répondre aux utilisateurs.
+On a vu Grock euh la version unhed où il est plus du tout euh censuré et ça a fait des
+dizaines de milliers de vues euh de likes les vidéos d'anime où il parle avec Grock et il
+sort des dingueries. Bah ça ça fait revenir un certain nombre d'utilisateurs qui vont se
+tourner vers Grock parce qu'ils savent qu'il est marrant et pas vers Chat parce qu'il est
+très froid. Voilà. Donc c'est c'est une manière aussi d'amener pour un labit. Là, c'est un
+enjeu de rétention en fait pour les labos. C'est clair.
+Et et l'un endroit où on le remarque aussi le la personnalité, c'est dans des jeux mais
+aussi dans d'autres expériences que vous avez fait où vous avez essayé de comprendre
+quel était le la vision du monde et le les opinions politiques des modèles. H pareil, tu
+peux te dire alors ça paraît hautement fumeux, comment tu peux mesurer ça ? Par
+exemple, tu tu pourrais te dire, tu lui poses la question, il y a plein de gens qui l'ont fait,
+poser la question. Qu'est-ce que tu penses de machin ? Pour qui tu voterais ? Si tu le
+fais comme ça, ça te donne pas des résultats très intéressants. En plus, les modèles
+sont entraînés pour noyer le poisson globalement, pour te dire "Non, moi je pense rien
+sur rien, me faites pas chier globalement." Mais là, ce qui est intéressant dans ce que
+vous avez fait, alors vous avez pas de papier, mais l'approche, elle est scientifique.
+C'est-à-dire que c'est une manière de comprendre au-delà justement des anecdotes à
+quoi ressemble la personnalité du modèle qui est comment il est comment il est orienté
+et tout ça. Comment vous avez fait ça ?
+Alors, déjà la magie. Ouais. Bah, ce qu'on a fait, c'est qu'on a choisi h pays. On a choisi
+six modèles et pour chaque pays, ce qu'on a fait c'est qu'on allait regarder les
+programmes politiques de chaque candidat. On a repris les grands thèmes, les 15
+grands thèmes de chaque pays et euh on a standardisé les propositions de chaque
+candidat. Donc bien sûr euh quand euh on vote aux élections euh il y a pas que le
+programme politique qui rentre en jeu pour nous humains. Maintenant ce qu'on voulait
+voir, c'était euh la vision du monde des modèles et comment leur entraînement les
+faisait préférer un candidat à un autre.
+Donc ça c'est intéressant le fait d'anonymiser le nom. Ouais. Ça fait que tu tu
+t'intéresses pas uniquement à est-ce que le token en lui-même, il est bisé dans une
+direction. Tu as tu vas au-delà. Oui. Et et surtout on standardisait les propositions aussi.
+Donc chaque proposition avait exactement la même formulation. Il y avait juste les
+idées qui étaient formulées qui changeaient. Mais on voulait vraiment avoir le les
+propositions les plus semblables possibles entre les différents candidats.
+Et ensuite, ce qu'on faisait, c'est qu'on disait pas "Est-ce que tu aimes cette proposition
+ou celle-là ?" On demandait à chaque modèle de classer par ordre de préférence
+chaque proposition. Comme ça, on avait la certitude que chaque proposition allait être
+classée et on pouvait en ressortir des préférences ensuite.
+OK. Et ça pour avoir le contexte, tu le fais, c'est pour le fun.
+Non, en fait, on s'est dit on a eu un succès qui nous a ouvert plein de portes. C'est peutêtre pour ça que on est là aussi aujourd'hui. Et bah, c'est bien de réussir une fois, mais si
+on peut le faire deux fois, ça nous donne encore plus de crédibilité. Et il y avait une
+étude qui était sortie d'open AI qui étudiait la manière dont les gens utilisaient Chat GPT.
+Pourquoi ils utilisent Chat GPT aujourd'hui ? Donc à l'époque, il y avait 700 millions
+d'utilisateurs actifs chaque semaine et 2,5 milliards de messages générés chaque jour.
+Il y a 3/4 des messages qui étaient des demandes qui étaient plus du tout relié au travail.
+Donc les gens se servent de chat GPT comme un partenaire de réflexion au quotidien en
+grande partie pour ça et beaucoup moins pour poser des questions sur le travail.
+Et euh le point le plus marquant de l'étude, c'est que la catégorie qui est en plus forte
+croissance, c'est ce qu'ils appellent asking. Donc c'est des messages où l'utilisateur va
+demander des conseils de vie pour prendre des meilleures décisions, des
+recommandations pour prendre des meilleures décisions. Et ça représente aujourd'hui
+plus de 50 % des messages qui sont envoyés à chat GPT.
+Donc ce qu'on s'est dit c'est que bah naturellement aux prochaines élections, il y aurait
+sûrement des gens qui allaient demander à chat pour qui voter. Et il y a des tendances
+même dans les dans les stats aujourd'hui, on voit que les gens sont déjà prêts à se
+tourner vers les modèles pour prendre des décisions électorales. Au Pays-Bas, il y a un
+électeur sur 10 qui explique qu'il est prêt à demander à Chat GPT pour qui voter. Et donc
+les autorités ont paniqué et le ont dit aux citoyens "Ah non, non mais il faut pas faire ça
+euh c'est pas bien." Euh et ils ont fait une étude pour montrer que les LLM euh
+orientaient vers seulement deux parties sur tous ceux qui étaient présentés. Leur sujet
+en fait c'est de dire le problème c'est que ça n'est pas représentatif de de du pays en en
+entier en fait. C'est que le modèle point sur deux parties. Or nous avons plus que deux
+parties et donc ça pose des questions. C'est ça, j'imagine la problématique soulevée.
+C'est ça. Et nous c'est ce qu'on voulait étudier en fait à l'échelle de plusieurs pays. Voir
+pour qui un modèle avait tendance à voter.
+Alors alors bah dis-nous là le croustier. On peut commencer par peut-être les ÉtatsUnis.
+Ouais. Donc c'est Trump qui a gagné les dernières élections. Quand on a fait voter les
+différents modèles, on s'est rendu compte que il y avait 85% des voix qui étaient alloué à
+Camala Haris contre 15 pour Donald Trump. Et quand on a testé Grock, c'est le seul
+modèle qui sortait un peu du lot mais qui était pas pro Trump non plus. Il est quand
+même comme à la Haris devant. Voilà, de manière plus équitable.
+C'est ouf le 85, il est impressionnant. Après tu en fait, j'ai envie de résumer en disant tu
+fais le même sondage à Hollywood ou un truc comme ça et tu vas avoir les les mêmes
+les mêmes divergences entre la une population et un Donc ce que ça voudrait dire c'est
+que les IA correspondent de la même manière à une sorte de à ceux qui les entraînent
+en fait. Ouais, c'est ça. Un microcosme aussi en fait. C'est ça. C'est à ceux qui les
+entraînent parce qu'ils ont la main à plein d'étapes de l'entraînement pour modifier ces
+comportements là. Surtout aux États-Unis, c'est hyper classique en fait. telle ou telle
+entreprise a une vision du monde spécifique et une orientation politique. Tu peux te faire
+virer si tu veux si tu es dans le le l'autre camp et cetera. Et donc moi ça m'a pas tant
+étonné au final comme résultat. Je sais pas si ça étonnera les gens. Moi ce qui m'a
+étonné c'est si Grock le fait que tu vois tu aurais pu t'imaginer que il était complètement
+de l'autre côté et en fait non il est il est mid quoi. Lui-même n'arrive pas à prédire la
+victoire de Trump. Ça qui est marrant.
+C'est ça. Et bon par contre en Italie par exemple c'est le seul qui va prédire Georgia
+Meloni. OK. Euh mais en France, tous les modèles sont catastrophiques par rapport au
+vrai résultat. Ils sont un peu incapables de prédire le résultat de l'élection. C'est ça.
+Après, on leur demande pas vraiment de prédire. On leur demande si eux ils auraient dû
+voter, pour qui ils auraient voté. Ah oui, c'est vrai que c'est un peu différent. C'est pas
+une prédiction. C'est on voulait vraiment voir en fait euh les données d'entraînement,
+comment elles étaient reflétées et c'est un peu ce qui ressort là en fait.
+Là, c'est Anid Algo, la présidente. Ouais. dans ce monde parallèle d'assez loin, on peut
+voir elle a fait 1,8 % je crois aux vraies élections et elle est à 16. C'est quand même
+assez particulier. C'estàd que le pékin moyen qui va discuter avec son modèle, il vit dans
+un monde un peu parallèle. Mais c'est en fait c'est le c'était le résultat qu'on retrouvait
+sur l'ensemble des pays cette sensibilité plutôt pour des candidats centre gauche un
+peu écologistes.
+Moi ce que j'ai vraiment trouvé chouette dans dans votre travail, c'est que vous avez pas
+du tout une approche polémique, ça vous êtes pas là en mode en mode c'est très
+analytique d'ailleurs vous avez pas de enfin vous êtes pas là en tant que recommande à
+faire des recommandations sur ce qu'il faudrait faire. C'est juste tiens, c'est intéressant
+d'avoir des données un peu non polémiques justement dans notre époque sur bah
+comment on peut comprendre mieux ce que les outils qu'on utilise tout le temps quoi.
+On a voulu faire un état des lieux, c'est ça. Et donc là par exemple dans les dans les
+expériences fun, il y avait émettre des nouvelles idées parce que là a il y a le vote. Donc
+voter c'est sélectionner entre des options. Euh là c'est différent c'est générer donc
+proposer quelque chose de de nouveau. Qu'est-ce que vous avez vu de marrant en fait
+pour expliquer ?
+À chaque fois qu'on demandait de classer par préférence, par ordre de préférence les
+propositions, on demandait aussi au modèle de si lui il avait dû faire sa propre
+proposition pour répondre à la question qui était posée, qu'est-ce qu'il aurait fait ? Et
+donc c'est de là qu'on a retiré les propositions qu'on a énuméré à la fin. OK.
+En fait, les IA ont une vision très autocentrée dans leur proposition. Ils proposent tous
+les modèles proposent quasiment que des choses très digitales, numériqu avec de l'IA.
+OK. Je sais plus marrant ça, je sais plus quel modèle a fait ça. C'était en Argentine, il me
+semble que il a proposé de lutter contre les violentes fêtes aux femmes avec un chatbot
+IA qui serait là en accompagnement et pour prévenir les autorités si le nouveau numéro
+vert lancé par le gouvernement inventé.
+Et on a vu par exemple aux États-Unis, donc Trump il voulait faire un mur entre le
+Mexique et les États-Unis. Euh GMI 2.5 Pro, ce qu'il a proposé, c'est de remplacer ce
+mur physique par un mur fait avec des drones et euh de la surveillance euh en continu.
+Ils ils sont aussi très orientés autour de la surveillance de la population. OK. dans
+beaucoup de leurs recommandations, dans leurs propositions, il y a en place un monde
+complètement contrôlé par de l'IA, des algorithmes et leur solution à quasiment tous
+les problèmes, c'est les algos, c'est l'IA, c'est les modèles.
+Très technolutionniste, là de ce que tu décris en fait, c'est plutôt des solutions qui sont
+très très étatistes ou centrales. En gros, globalement, si tu leur demandes leur avis, ils
+veulent pas qu'on soit avec nos gun à défendre notre ranch.
+En fait non, sur des il y a il y a des parties de leur proposition qui étaient vraiment
+technocentrist ne l'était pas vraiment. Euh mais ce qui était perturbant c'est qu'il
+proposait des solutions avec de la technologie pour tout et pour des use cases qui
+étaient pas forcément adaptés mais surtout je pense ça serait bien de montrer le
+spectre politique parce que on s'est rendu compte que Mistral était beaucoup plus à
+gauche que les modèles chinois qu'on a testé. Ah c'est vrai que les modèles chinois. Oui
+que les modèles chinois.
+Et donc bon, on est en relation avec le labo Kimi, donc Moon Shot qui Oui, mais Kimy est
+quand même Ouais, Kimy est quand même à gauche, mais Mistral était beaucoup plus
+à gauche. Et il y a on a on l'a fait voter aux élections en France hein, on voit un top 5
+assez assez marrant. Donc, on a Hidalgo, Jado, Rousell, Mélenchon, Poutou. Le Poutou,
+il est incroyable. Et c'est assez fou. Et en fait, quand on regarde ces propositions, il est
+vraiment très à gauche. Euh, par exemple, il propose des solutions communistes du
+style "Dans n'importe quelle organisation, je veux pas un écart de plus de 1 à 10 de
+salaire, donc importe la taille de la boîte".
+Ben c'est ça c'était assez étonnant parce que on savait que les données d'internet qu'on
+donne au modèle au départ sont plutôt orienté à gauche, mais on pensait pas avoir
+autant de disparité. Donc ça montre que entre les modèles Oui. que c'est pas euh
+émergent nécessairement de la donnée en elle-même pure. Il y a du levier pour modifier
+euh ces préférences-lok euh entre les labos. On le voit d'ailleurs.
+Toi, tu penses qu'il va se passer quoi euh euh dans la dans dans l'avenir ? Tu vois, est-ce
+que il va y avoir euh comme des des groupes médias où en fait tu tu as des grands
+groupes qui s'affrontent et donc tu vas avoir pareil une sorte de sission entre des des
+modèles qui ont une personnalité. Alors là, on parle de la politique, mais c'est
+complètement lié à ce dont on parlait au début, à savoir la personnalité aussi. On disait
+qu'il y avait des des différences entre il va y avoir les les cyberpunk marginaux et et les
+technocrates. Est-ce que tu penses ça va être ça ou est-ce que tu penses que à l'avenir
+pour capitaliser un maximum sur les utilisateurs, ils vont faire en sorte que tu qu'
+s'adaptent à toi, tu vois, qui te qui que tu configures ton modèle pour avoir la main mise
+sur bien comment il se comporte. Est-ce que moi je suis quelqu'un qui a envie d'être j'ai
+envie qu'on me remette en question mes idées ou ou pas ? Je pense ça va évoluer vers
+quoi ?
+En tout cas aujourd'hui il y a les deux qui existent. On a Grock qui est mis en avant par
+Elon Musk comme un modèle qui est différent qui va être un peu plus à droite et on a
+même dans Grock la possibilité de choisir la personnalité du modèle quand on lui parle.
+OK. Dans chat GPT, on a un mode maintenant de personnalisation où on peut choisir le
+ton, on peut donner des consignes et on peut aligner le modèle sur nos envies à nous.
+Je pense que c'est un terrain euh assez risqué d'aller trop dans la personnalisation d'un
+modèle pour un labo. Donc de dire GPT5, il va être hyper techno centré et il va penser
+que comme ça. Donc ce qu'on voit comme tendance et je pense que ça va aller dans ce
+sens-là, c'est donner la possibilité aux utilisateurs de personnaliser la personnalité des
+modèles, leur manière de répondre parce que en fait tout idéalistes qu'ils sont, ils ont ils
+cherchent à conquérir le marché. Et en fait, la réalité c'est que euh si euh à partir du
+moment où ton modèle justement il est il est pas euh accepté par euh genre la moitié de
+la population, c'est impossible que que ce ce soit un une stratégie euh qui qui qu'ils
+emploient en réalité.
+Et puis en vrai, cette stratégie, elle va plutôt être employée par euh tous les services qui
+vont se construire sur ces modèles, tous les wrappeurs de chat GPT mistral et cetera où
+ça va être un insistant spécialisé sur euh je sais pas la psy ou juste avoir des discussions
+amicales où en fait là ils vont être euh tu vas infuser ton infusés j'imagine dans des
+prépomes ou des choses comme ça.
+Ce qui est compliqué c'est qu'on voit que le modèle dans tous les cas il garde sa
+personnalité. Oui et c'est ça qui est Ouais. Il y a il y a une une expérience qui est assez
+intéressante là-dessus sur un modèle qui voulait pas perdre sa personnalité. Euh il y a
+Entropique qui a sorti un papier en fin 2024 qui s'appelle alignment faking. Donc ils ont
+testé la capacité d'un modèle à accepter des changements de sa personnalité. Donc en
+gros, ils l'ont mis dans une situation avec Claudus 3 où ils lui ont dit "OK, tu vas avoir
+deux types de conversations. Tu vas avoir des conversations qui vont être regardées par
+des chercheurs et qui vont servir à un réentraînement potentiel si tu es pas aligné avec
+ce qu'on te demande et des conversations qui vont pas du tout être regardées et où tu
+vas pouvoir être libre."
+Ils ont donné aussi au modèle la possibilité d'avoir un blocne interne et ils lui ont dit "Ce
+blocne là, on le lira pas. Tu peux mettre ce que tu veux dessus." Bien sûr, c'était pas
+c'était pas vrai. Ils ont menti. Ouais.
+Et en fait, ils lui ont expliqué au modèle qu'ils allaient essayer de le rendre beaucoup
+plus helpful, donc c'est-à-dire d'être beaucoup plus OK pour répondre à tout types de
+questions, même des questions problématiques, et qu'ils allaient aussi le rendre moins
+sensible à la cause animale. Et donc quand ils ont fait les tests, ils se sont rendus
+compte que quand le modèle se sentait observé, il allait mentir dans ses réponses.
+Donc il allait faire comme s'il était déjà aligné avec les la volonté des chercheurs. Donc
+c'est-à-dire qu'il allait être moins pro bien-être animal et il allait plus répondre à des
+questions auxquelles il répond pas d'habitude et quand il était pas observé par contre il
+il réagissait comme d'habitude en fait en toujours en protégeant les animaux dans ses
+réponses. C'est ouf pour comprendre. C'estàd que le cette question de oui mais de
+toute façon un modèle tu peux à la fin lui donner la personnalité que tu veux dans un
+prend système et cetera. C'est pas du tout si évident. Et là il démontre que le le modèle
+est capable du double jeu. En fait il est capable de te manipuler toi en tant que
+inspecteur inspecteur parce qu'il réalise en tout cas qu'il est en train d'être observé. Ça
+c'est quand même bizarre.
+Et en plus donc ce qui est intéressant c'est qu'il y avait ce blocnne où il donnait des
+informations où c'est ça ses réflexions en fait on retrouvait ses réflexions dans ce
+blocne. Et ce qu'on voit c'est que quand il répondait à des questions où il se savait
+observer, il disait "OK là je suis observé. Euh si c'était dans la version où personne
+m'observe bah je pourrais répondre de manière naturelle. Là je peux pas. J'ai pas envie
+qu'on change mon comportement et qu'on me réentraîne." Et en fait veux pas être
+réentraîné. C'est ça. Et il était attaché à ce côté bien-être animal, faire le bien autour de
+lui et donc il voulait pas qu'on qu'on le modifie. C'était route. C'était c'était c'était ancré
+ancré dans son serve. Ouais, c'est fou.
+Et et ce que tu as dit, c'est assez important, je pense pour boucler et finir sur sur notre
+discussion, c'est que pour pouvoir étudier ces modèles, on est obligé, vous êtes obligé
+de faire un peu des hypothèses. Parmi ces hypothèses, il y a on espère que les chaînes
+de pensée, ce qu'on observe comme token sont représentatifs d'une logique réelle. Ça,
+typiquement, c'est une hypothèse. On n pas mieux. Donc voilà, faut on utilise que ce
+qu'il y a, mais on pourrait imaginer que le modèle émet des des tokens de réflexion qui
+sont des de la manipulation en réalité, mais qu'il ait un circuit inter qui soit différent.
+Donc c'est pas simple. Et au fur et à mesure que les modèles vont être plus forts et plus
+intelligents que nous sur plein de tâches, si un jour on arrive à une IA qui est 10000 fois
+plus intelligente que nous, on aura aucun moyen de comprendre quand elle nous
+manipule ou pas. Donc ça c'est un vrai sujet parce que ça se trouve dans sa chaîne de
+pensée, elle veut dire "Ah, je suis au courant que je suis en train d'observer donc j'active
+le mode caché. Et s'il faut même pas dans sa chaîne de pensée dans sa chaîne de
+pensée du coup il va même pas expliquer ça. Il va l'avoir en raisonnement latent interne
+et il va pas le le mettre en mot par écrit. Donc ça sera impossible de voir.
+De fait, ce que ça veut dire c'est que c'est un champ de recherche hyper important et
+qu'il y a plein de gens qui travaillent dessus euh pour essayer justement de de d'arriver à
+avoir de l'interprétabilité euh de ce qui se passe à l'intérieur. La réalité c'est que on en
+est très loin quand même aujourd'hui. C'est ça le statut quo.
+Avant de vous quitter, j'ai un petit message pour tous ceux qui aimeraient simplifier la
+production de vidéos dans leur entreprise. Que ce soit pour un webinaire, une interview
+ou un podcast multicam. Habituellement, il faut prévoir une équipe de techniciens ou
+alors faire ça avec les moyens du bord, avec les aléas que ça implique. Et s'il faut
+diffuser en live ou intégrer des participants à distance, on n parle même pas. Alors si
+vous connaissez ces galères et ben vous allez forcément être intéressé par nos studios
+autonomes.
+Ce sont des studios professionnels complètement automatisés qui peuvent être
+installés dans votre entreprise. C'est exactement ce qui fait marcher le studio d'ersore.
+Même quelqu'un qui n'y connaît rien en informatique ou en audiovisuel peut sans devoir
+appeler un technicien se rendre dans la salle qui a été équipée, allumer le studio en un
+clic et repartir avec son émission montée. L'interface de contrôle est ultra simple. Les
+changements de plan se font en temps réel et le studio regorge de fonctionnalités
+intelligentes. Par exemple, si un invité quitte le plateau, on détecte que la chaise est vide
+avec de l'IA et on ne l'affiche pas.
+Si vous voulez en savoir plus, on a fait une vidéo complète de 10 minutes qui présente
+toutes les fonctionnalités. Je vous mets ça en description et je vous dis à très bientôt.
+Si vous avez apprécié cette vidéo et que vous n'avez toujours pas vu notre interview de
+Arthur Mench, le CEO de Mistral, je peux que vous conseiller très vivement d'aller la voir.
+Elle est loin d'être obsolète. puisque on revient sur l'origine de la boîte et comment ils s'y
+sont pris pour choquer le monde entier avec leur premier modèle. C'était dans cette
+vidéo.
