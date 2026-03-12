@@ -381,16 +381,9 @@ async def get_game_reasoning(game_id: str):
 # ============================================================
 
 @app.get("/api/analytics")
-async def get_analytics():
+async def get_analytics(session_id: int | None = None):
     """Données complètes pour la page Analytics."""
-    sessions = db.get_sessions()
-    stats = db.get_all_stats(level=0)
-    games = db.get_games_list(limit=500)
-    return {
-        "sessions": sessions,
-        "stats": stats,
-        "games": games,
-    }
+    return db.get_rich_analytics(session_id=session_id)
 
 
 # ============================================================

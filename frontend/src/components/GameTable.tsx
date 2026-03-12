@@ -140,6 +140,18 @@ export default function GameTable({
               width={500}
               height={500}
             >
+              <defs>
+                <marker
+                  id="arrowhead"
+                  markerWidth="8"
+                  markerHeight="6"
+                  refX="8"
+                  refY="3"
+                  orient="auto"
+                >
+                  <polygon points="0 0, 8 3, 0 6" fill="#ef4444" opacity="0.7" />
+                </marker>
+              </defs>
               {players
                 .filter((p) => p.votedFor)
                 .map((voter, i) => {
@@ -153,17 +165,25 @@ export default function GameTable({
                     players.indexOf(target),
                     players.length
                   );
+                  // Raccourcir la ligne pour que la flèche pointe vers le bord de la carte
+                  const dx = targetPos.x - voterPos.x;
+                  const dy = targetPos.y - voterPos.y;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  const shortenBy = 45;
+                  const endX = dist > shortenBy ? targetPos.x - (dx / dist) * shortenBy : targetPos.x;
+                  const endY = dist > shortenBy ? targetPos.y - (dy / dist) * shortenBy : targetPos.y;
                   return (
                     <line
                       key={i}
                       x1={voterPos.x}
                       y1={voterPos.y}
-                      x2={targetPos.x}
-                      y2={targetPos.y}
+                      x2={endX}
+                      y2={endY}
                       stroke="#ef4444"
                       strokeWidth={1.5}
                       strokeDasharray="4 4"
-                      opacity={0.4}
+                      opacity={0.5}
+                      markerEnd="url(#arrowhead)"
                     />
                   );
                 })}

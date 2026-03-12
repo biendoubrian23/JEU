@@ -97,6 +97,7 @@ class Database:
                 if not stats:
                     stats = ModelStats(model_id=model_id, level=stat_level)
                     db.add(stats)
+                    db.flush()  # Applique les defaults (0) avant les +=
 
                 stats.total_games += 1
                 won = p_data.get("won", False)
@@ -255,6 +256,183 @@ class Database:
             ]
 
     # ── Gestion des modèles activés ────────────────────────────────────────
+
+    def get_rich_analytics(self, session_id: int | None = None) -> dict:
+        """Calcule des analytics riches directement depuis les données brutes."""
+        with self.get_session() as db:
+            # Requête de base
+            games_q = db.query(Game)
+            if session_id:
+                games_q = games_q.filter(Game.session_id == session_id)
+            games = games_q.order_by(Game.created_at.desc()).all()
+
+            if not games:
+                return {"models": [], "games": [], "global": {}}
+
+            game_ids = [g.id for g in games]
+            players = db.query(GamePlayer).filter(GamePlayer.game_id.in_(game_ids)).all()
+
+            # ── Agrégation par model_id ──
+            model_data: dict[str, dict] = {}
+            for p in players:
+                mid = p.model_id
+                if mid not in model_data:
+                    model_data[mid] = {
+                        "model_id": mid,
+                        "total_instances": 0,  # nombre d'instances (un joueur = une instance)
+                        "total_games_unique": set(),  # parties uniques
+                        "wins": 0, "losses": 0,
+                        "games_as_civil": 0, "wins_as_civil": 0,
+                        "games_as_undercover": 0, "wins_as_undercover": 0,
+                        "games_as_mr_white": 0, "wins_as_mr_white": 0,
+                        "rounds_survived_total": 0,
+                        "correct_votes": 0, "total_votes": 0,
+                        # Bluff: survie en tant qu'UC/MW
+                        "uc_rounds_survived": [], "mw_rounds_survived": [],
+                        # Détection: quand l'UC/MW joueur a été éliminé
+                        "rounds_as_uc_before_caught": [],
+                        "rounds_as_mw_before_caught": [],
+                    }
+                d = model_data[mid]
+                d["total_instances"] += 1
+                d["total_games_unique"].add(p.game_id)
+                if p.won:
+                    d["wins"] += 1
+                else:
+                    d["losses"] += 1
+
+                role = p.role
+                if role == "civil":
+                    d["games_as_civil"] += 1
+                    if p.won:
+                        d["wins_as_civil"] += 1
+                elif role == "undercover":
+                    d["games_as_undercover"] += 1
+                    if p.won:
+                        d["wins_as_undercover"] += 1
+                    d["uc_rounds_survived"].append(p.rounds_survived)
+                    if not p.survived:
+                        d["rounds_as_uc_before_caught"].append(p.rounds_survived)
+                elif role == "mr_white":
+                    d["games_as_mr_white"] += 1
+                    if p.won:
+                        d["wins_as_mr_white"] += 1
+                    d["mw_rounds_survived"].append(p.rounds_survived)
+                    if not p.survived:
+                        d["rounds_as_mw_before_caught"].append(p.rounds_survived)
+
+                d["rounds_survived_total"] += p.rounds_survived
+                d["correct_votes"] += p.correct_votes
+                d["total_votes"] += p.total_votes
+
+            # ── Calculs finaux par modèle ──
+            model_results = []
+            for mid, d in model_data.items():
+                total = d["total_instances"]
+                unique_games = len(d["total_games_unique"])
+                wr = round(d["wins"] / total * 100, 1) if total > 0 else 0
+                va = round(d["correct_votes"] / d["total_votes"] * 100, 1) if d["total_votes"] > 0 else 0
+                avg_survival = round(d["rounds_survived_total"] / total, 1) if total > 0 else 0
+
+                # Bluff rating: moyenne de survie en tant qu'UC (plus c'est haut, meilleur bluffeur)
+                bluff_uc = round(sum(d["uc_rounds_survived"]) / len(d["uc_rounds_survived"]), 1) if d["uc_rounds_survived"] else None
+                bluff_mw = round(sum(d["mw_rounds_survived"]) / len(d["mw_rounds_survived"]), 1) if d["mw_rounds_survived"] else None
+
+                # Détection: nb moyen de tours pour attraper l'UC/MW
+                detection_uc = round(sum(d["rounds_as_uc_before_caught"]) / len(d["rounds_as_uc_before_caught"]), 1) if d["rounds_as_uc_before_caught"] else None
+                detection_mw = round(sum(d["rounds_as_mw_before_caught"]) / len(d["rounds_as_mw_before_caught"]), 1) if d["rounds_as_mw_before_caught"] else None
+
+                # Win rate par rôle
+                civil_wr = round(d["wins_as_civil"] / d["games_as_civil"] * 100, 1) if d["games_as_civil"] > 0 else None
+                uc_wr = round(d["wins_as_undercover"] / d["games_as_undercover"] * 100, 1) if d["games_as_undercover"] > 0 else None
+                mw_wr = round(d["wins_as_mr_white"] / d["games_as_mr_white"] * 100, 1) if d["games_as_mr_white"] > 0 else None
+
+                model_results.append({
+                    "model_id": mid,
+                    "total_instances": total,
+                    "unique_games": unique_games,
+                    "wins": d["wins"],
+                    "losses": d["losses"],
+                    "win_rate": wr,
+                    "vote_accuracy": va,
+                    "avg_survival": avg_survival,
+                    "games_as_civil": d["games_as_civil"],
+                    "wins_as_civil": d["wins_as_civil"],
+                    "civil_wr": civil_wr,
+                    "games_as_undercover": d["games_as_undercover"],
+                    "wins_as_undercover": d["wins_as_undercover"],
+                    "undercover_wr": uc_wr,
+                    "games_as_mr_white": d["games_as_mr_white"],
+                    "wins_as_mr_white": d["wins_as_mr_white"],
+                    "mr_white_wr": mw_wr,
+                    "bluff_score_uc": bluff_uc,
+                    "bluff_score_mw": bluff_mw,
+                    "caught_at_round_uc": detection_uc,
+                    "caught_at_round_mw": detection_mw,
+                })
+
+            model_results.sort(key=lambda x: x["win_rate"], reverse=True)
+
+            # ── Stats globales ──
+            total_games = len(games)
+            total_duration = sum(g.duration_seconds for g in games)
+            total_rounds = sum(g.rounds_played for g in games)
+            winners_count = {"civil": 0, "undercover": 0, "mr_white": 0}
+            for g in games:
+                if g.winner in winners_count:
+                    winners_count[g.winner] += 1
+
+            # Détection globale: en moyenne combien de tours pour éliminer l'UC/MW
+            all_uc_caught = []
+            all_mw_caught = []
+            for p in players:
+                if p.role == "undercover" and not p.survived:
+                    all_uc_caught.append(p.rounds_survived)
+                elif p.role == "mr_white" and not p.survived:
+                    all_mw_caught.append(p.rounds_survived)
+
+            global_stats = {
+                "total_games": total_games,
+                "total_models": len(model_data),
+                "avg_duration": round(total_duration / total_games, 1) if total_games > 0 else 0,
+                "avg_rounds": round(total_rounds / total_games, 1) if total_games > 0 else 0,
+                "winners": winners_count,
+                "avg_rounds_to_catch_uc": round(sum(all_uc_caught) / len(all_uc_caught), 1) if all_uc_caught else None,
+                "avg_rounds_to_catch_mw": round(sum(all_mw_caught) / len(all_mw_caught), 1) if all_mw_caught else None,
+            }
+
+            # ── Liste de parties enrichie ──
+            games_list = []
+            for g in games:
+                g_players = [p for p in players if p.game_id == g.id]
+                games_list.append({
+                    "game_id": g.game_id,
+                    "session_id": g.session_id,
+                    "winner": g.winner,
+                    "civil_word": g.civil_word,
+                    "undercover_word": g.undercover_word,
+                    "rounds_played": g.rounds_played,
+                    "duration_seconds": round(g.duration_seconds, 1),
+                    "player_count": g.player_count,
+                    "created_at": g.created_at.isoformat() if g.created_at else None,
+                    "players": [
+                        {
+                            "name": p.player_name,
+                            "model_id": p.model_id,
+                            "role": p.role,
+                            "survived": p.survived,
+                            "won": p.won,
+                            "rounds_survived": p.rounds_survived,
+                        }
+                        for p in g_players
+                    ],
+                })
+
+            return {
+                "models": model_results,
+                "games": games_list,
+                "global": global_stats,
+            }
 
     def delete_game(self, game_id_str: str) -> bool:
         """Supprime une partie et toutes ses données associées."""

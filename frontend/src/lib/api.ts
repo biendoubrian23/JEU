@@ -83,8 +83,10 @@ export async function deleteSession(sessionId: number) {
   return res.json();
 }
 
-export async function getAnalytics() {
-  const res = await fetch(`${API_BASE}/api/analytics`);
+export async function getAnalytics(sessionId?: number) {
+  let url = `${API_BASE}/api/analytics`;
+  if (sessionId) url += `?session_id=${sessionId}`;
+  const res = await fetch(url);
   return res.json();
 }
 
