@@ -260,6 +260,13 @@ export default function DashboardPage() {
                         {s.games_played}/{s.total_games} parties
                       </span>
                     </div>
+                    {s.created_at && (
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        {new Date(s.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                        {" à "}
+                        {new Date(s.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

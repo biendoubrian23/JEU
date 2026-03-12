@@ -83,6 +83,11 @@ export async function deleteSession(sessionId: number) {
   return res.json();
 }
 
+export async function getAnalytics() {
+  const res = await fetch(`${API_BASE}/api/analytics`);
+  return res.json();
+}
+
 // ============================================================
 // Configuration
 // ============================================================

@@ -147,6 +147,7 @@ export interface ActivePlayer {
   provider: string;
   alive: boolean;
   role?: string; // Visible seulement après élimination ou fin de partie
+  word?: string; // Mot secret du joueur (pour l'observateur)
   currentClue?: string;
   lastMessage?: string;
   votedFor?: string;

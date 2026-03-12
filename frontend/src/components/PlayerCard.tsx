@@ -51,6 +51,13 @@ export default function PlayerCard({ player, isActive }: PlayerCardProps) {
       {/* Modèle */}
       <p className="text-[10px] text-gray-500 truncate">{modelShortName}</p>
 
+      {/* Mot secret (pour l'observateur) */}
+      {player.word && (
+        <p className="text-[9px] text-gray-400 truncate italic">
+          « {player.word} »
+        </p>
+      )}
+
       {/* Dernier indice */}
       {player.currentClue && (
         <p className="mt-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded px-1 py-0.5 truncate">

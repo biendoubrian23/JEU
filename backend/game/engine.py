@@ -536,9 +536,12 @@ class UndercoverEngine:
             player=None,
             data={
                 "message": f"Partie {state.game_id} commence ! {len(state.players)} joueurs.",
-                "players": [{"name": p.name, "model": p.model_id} for p in state.players],
-                "civil_word": "***",  # Masqué pendant la partie
-                "undercover_word": "***",
+                "players": [
+                    {"name": p.name, "model": p.model_id, "role": p.role.value, "word": p.word or ""}
+                    for p in state.players
+                ],
+                "civil_word": state.civil_word,
+                "undercover_word": state.undercover_word,
             },
         )
         state.events.append(start_event)

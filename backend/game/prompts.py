@@ -67,6 +67,7 @@ def clue_prompt(round_num: int, previous_clues: list[dict]) -> str:
     return f"""Tour {round_num} - Phase d'indices.
 {context}
 C'est ton tour. Donne UN SEUL MOT comme indice lié à ton mot secret.
+IMPORTANT : Tu ne dois PAS répéter un mot déjà donné par toi ou par un autre joueur. Chaque indice doit être un mot DIFFÉRENT de tous les indices précédents.
 Réponds UNIQUEMENT en JSON : {{"clue": "ton_mot", "reasoning": "explication courte de ton choix (privé, les autres ne verront pas)"}}"""
 
 

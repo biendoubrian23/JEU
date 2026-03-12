@@ -15,6 +15,7 @@ export default function HomePage() {
   const [currentPhase, setCurrentPhase] = useState("config");
   const [currentRound, setCurrentRound] = useState(0);
   const [gameId, setGameId] = useState<string | null>(null);
+  const [gameWords, setGameWords] = useState<{ civil: string; undercover: string } | null>(null);
   const [showReasoning, setShowReasoning] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [finishedPlayers, setFinishedPlayers] = useState<PlayerResult[]>([]);
@@ -35,8 +36,13 @@ export default function HomePage() {
               model_id: p.model,
               provider: "",
               alive: true,
+              role: p.role,
+              word: p.word || "",
             }))
           );
+        }
+        if (event.data.civil_word && event.data.civil_word !== "***") {
+          setGameWords({ civil: event.data.civil_word, undercover: event.data.undercover_word });
         }
         break;
 
@@ -130,6 +136,7 @@ export default function HomePage() {
           setCurrentPhase("setup");
           setCurrentRound(0);
           setFinishedPlayers([]);
+          setGameWords(null);
         }
         setGameId(event.data.game_id);
         break;
@@ -177,6 +184,7 @@ export default function HomePage() {
       setCurrentRound(0);
       setFinishedPlayers([]);
       setGameId(null);
+      setGameWords(null);
 
       await startGame({
         players: config.players,
@@ -295,6 +303,7 @@ export default function HomePage() {
             currentRound={currentRound}
             events={events}
             gameId={gameId}
+            gameWords={gameWords || undefined}
             batchProgress={batchProgress || undefined}
             onPlayerClick={handlePlayerClick}
           />

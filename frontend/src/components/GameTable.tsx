@@ -9,6 +9,7 @@ interface GameTableProps {
   currentRound: number;
   events: GameEvent[];
   gameId: string | null;
+  gameWords?: { civil: string; undercover: string };
   batchProgress?: { current: number; total: number };
   onPlayerClick?: (playerName: string) => void;
 }
@@ -19,6 +20,7 @@ export default function GameTable({
   currentRound,
   events,
   gameId,
+  gameWords,
   batchProgress,
   onPlayerClick,
 }: GameTableProps) {
@@ -98,7 +100,13 @@ export default function GameTable({
             <div className="text-center">
               <span className="text-3xl">🕵️</span>
               <p className="text-xs text-gray-500 mt-1 font-medium">UNDERCOVER</p>
-              {currentPhase !== "config" && currentPhase !== "ended" && (
+              {gameWords && (
+                <div className="mt-1.5 space-y-0.5">
+                  <p className="text-[10px] font-semibold text-blue-600 bg-blue-50 rounded px-1.5 py-0.5">👤 {gameWords.civil}</p>
+                  <p className="text-[10px] font-semibold text-red-600 bg-red-50 rounded px-1.5 py-0.5">🕵️ {gameWords.undercover}</p>
+                </div>
+              )}
+              {!gameWords && currentPhase !== "config" && currentPhase !== "ended" && (
                 <p className="text-xs text-indigo-600 mt-0.5">Tour {currentRound}</p>
               )}
             </div>
