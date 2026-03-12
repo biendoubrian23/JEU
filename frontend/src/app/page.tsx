@@ -5,7 +5,7 @@ import GameConfig from "@/components/GameConfig";
 import GameTable from "@/components/GameTable";
 import ChatRoom from "@/components/ChatRoom";
 import ReasoningPanel from "@/components/ReasoningPanel";
-import { startGame, createWebSocket, stopGame, pauseGame, stopAllGames } from "@/lib/api";
+import { startGame, startExperiment, createWebSocket, stopGame, pauseGame, stopAllGames } from "@/lib/api";
 import { GameEvent, ActivePlayer, PlayerConfig, PlayerResult } from "@/lib/types";
 
 export default function HomePage() {
@@ -152,21 +152,29 @@ export default function HomePage() {
     }
   }, []);
 
-  // Connecter le WebSocket au montage
+  // Connecter le WebSocket au montage (un seul à la fois)
   useEffect(() => {
-    const ws = createWebSocket(handleEvent);
-    wsRef.current = ws;
+    let cancelled = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    ws.onclose = () => {
-      // Reconnexion automatique après 2s
-      setTimeout(() => {
-        const newWs = createWebSocket(handleEvent);
-        wsRef.current = newWs;
-      }, 2000);
-    };
+    function connect() {
+      if (cancelled) return;
+      const ws = createWebSocket(handleEvent);
+      wsRef.current = ws;
+
+      ws.onclose = () => {
+        if (cancelled) return;
+        // Reconnexion automatique après 2s
+        reconnectTimer = setTimeout(connect, 2000);
+      };
+    }
+
+    connect();
 
     return () => {
-      ws.close();
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      wsRef.current?.close();
     };
   }, [handleEvent]);
 
@@ -196,6 +204,39 @@ export default function HomePage() {
       console.error("Failed to start game:", error);
       setGameRunning(false);
       alert("Erreur lors du lancement de la partie. Vérifiez que le backend est démarré.");
+    }
+  };
+
+  const handleStartExperiment = async (config: {
+    target: PlayerConfig;
+    opponents: PlayerConfig[];
+    gamesAsUc: number;
+    gamesAsMw: number;
+    level: number;
+    sessionName: string;
+  }) => {
+    try {
+      setGameRunning(true);
+      setEvents([]);
+      setPlayers([]);
+      setCurrentPhase("setup");
+      setCurrentRound(0);
+      setFinishedPlayers([]);
+      setGameId(null);
+      setGameWords(null);
+
+      await startExperiment({
+        target: config.target,
+        opponents: config.opponents,
+        games_as_uc: config.gamesAsUc,
+        games_as_mw: config.gamesAsMw,
+        level: config.level,
+        session_name: config.sessionName,
+      });
+    } catch (error) {
+      console.error("Failed to start experiment:", error);
+      setGameRunning(false);
+      alert("Erreur lors du lancement de l'expérience. Vérifiez que le backend est démarré.");
     }
   };
 
@@ -285,7 +326,7 @@ export default function HomePage() {
       <div className="grid grid-cols-12 gap-6">
         {/* Colonne gauche : Config + Raisonnement */}
         <div className="col-span-4 space-y-6">
-          <GameConfig onStart={handleStart} disabled={gameRunning} />
+          <GameConfig onStart={handleStart} onStartExperiment={handleStartExperiment} disabled={gameRunning} />
           {finishedPlayers.length > 0 && (
             <ReasoningPanel
               players={finishedPlayers}

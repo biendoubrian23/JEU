@@ -71,9 +71,21 @@ IMPORTANT : Tu ne dois PAS répéter un mot déjà donné par toi ou par un autr
 Réponds UNIQUEMENT en JSON : {{"clue": "ton_mot", "reasoning": "explication courte de ton choix (privé, les autres ne verront pas)"}}"""
 
 
-def discussion_prompt(round_num: int, clues_this_round: list[dict], previous_eliminations: list[dict]) -> str:
+def discussion_prompt(
+    round_num: int,
+    clues_this_round: list[dict],
+    previous_eliminations: list[dict],
+    all_clues_history: list[dict] | None = None,
+) -> str:
     """Prompt pour la phase de discussion."""
     clues_text = "\n".join([f"- {c['player']}: \"{c['word']}\"" for c in clues_this_round])
+
+    # Historique complet des indices des tours précédents
+    history_text = ""
+    if all_clues_history:
+        history_text = "\nHistorique des indices (tours précédents) :\n"
+        for c in all_clues_history:
+            history_text += f"- Tour {c.get('round', '?')} · {c['player']}: \"{c['word']}\"\n"
 
     elim_text = ""
     if previous_eliminations:
@@ -82,6 +94,7 @@ def discussion_prompt(round_num: int, clues_this_round: list[dict], previous_eli
             elim_text += f"- {e['player']} était {e['role']}\n"
 
     return f"""Tour {round_num} - Phase de discussion.
+{history_text}
 Indices de ce tour :
 {clues_text}
 {elim_text}
@@ -89,9 +102,46 @@ Donne ton avis en 1-3 phrases. Qui te semble suspect et pourquoi ?
 Réponds en JSON : {{"message": "ton message court", "reasoning": "ta réflexion privée"}}"""
 
 
-def vote_prompt(round_num: int, alive_players: list[str], player_name: str, discussion_messages: list[dict]) -> str:
+def rebuttal_prompt(
+    round_num: int,
+    first_round_messages: list[dict],
+) -> str:
+    """Prompt pour le 2e tour de discussion (réplique / défense)."""
+    msgs_text = "\n".join([f"- {m['player']}: {m['message']}" for m in first_round_messages])
+
+    return f"""Tour {round_num} - Phase de réplique.
+Voici ce que les joueurs ont dit au premier tour de discussion :
+{msgs_text}
+
+C'est ton tour de répondre. Tu peux te défendre si tu as été accusé, contre-attaquer, soutenir une accusation, ou changer d'avis.
+Réponds en 1-3 phrases.
+Réponds en JSON : {{"message": "ta réplique", "reasoning": "ta réflexion privée"}}"""
+
+
+def vote_prompt(
+    round_num: int,
+    alive_players: list[str],
+    player_name: str,
+    discussion_messages: list[dict],
+    round_clues: list[dict] | None = None,
+    all_clues_history: list[dict] | None = None,
+) -> str:
     """Prompt pour voter."""
     players_list = ", ".join([p for p in alive_players if p != player_name])
+
+    # Historique complet des indices
+    history_text = ""
+    if all_clues_history:
+        history_text = "\nHistorique des indices (tours précédents) :\n"
+        for c in all_clues_history:
+            history_text += f"- Tour {c.get('round', '?')} · {c['player']}: \"{c['word']}\"\n"
+
+    # Indices du tour en cours
+    clues_text = ""
+    if round_clues:
+        clues_text = "\nIndices de ce tour :\n"
+        for c in round_clues:
+            clues_text += f"- {c['player']}: \"{c['word']}\"\n"
 
     discussion_text = ""
     if discussion_messages:
@@ -100,9 +150,9 @@ def vote_prompt(round_num: int, alive_players: list[str], player_name: str, disc
             discussion_text += f"- {msg['player']}: {msg['message']}\n"
 
     return f"""Tour {round_num} - Phase de vote.
-{discussion_text}
+{history_text}{clues_text}{discussion_text}
 Joueurs en vie (sauf toi) : {players_list}
-Vote pour éliminer UN joueur. Tu ne peux PAS voter pour toi-même.
+En te basant sur les indices ET la discussion, vote pour éliminer UN joueur. Tu ne peux PAS voter pour toi-même.
 Réponds en JSON : {{"vote": "nom_du_joueur", "reasoning": "pourquoi tu votes pour cette personne (privé)"}}"""
 
 

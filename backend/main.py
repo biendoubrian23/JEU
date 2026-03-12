@@ -138,6 +138,7 @@ class GameConfig(BaseModel):
     level: int = 1
     num_games: int = 1
     session_name: str = "Partie rapide"
+    forced_roles: dict[str, str] | None = None  # {"player_name": "undercover"|"mr_white"|"civil"}
 
 
 class BatchConfig(BaseModel):
@@ -145,6 +146,16 @@ class BatchConfig(BaseModel):
     level: int = 1
     num_games: int = 10
     session_name: str = "Session batch"
+
+
+class ExperimentConfig(BaseModel):
+    """Configuration d'une expérience de role-forcing."""
+    target: PlayerConfig           # Modèle cible à étudier
+    opponents: list[PlayerConfig]  # Modèles adversaires
+    games_as_uc: int = 100         # Nb parties en tant qu'Undercover
+    games_as_mw: int = 100         # Nb parties en tant que Mr. White
+    level: int = 1
+    session_name: str = "Expérience"
 
 
 # ============================================================
@@ -214,6 +225,7 @@ async def _run_games(config: GameConfig, session_id: int | None):
             player_configs=player_configs,
             level=config.level,
             level_context=level_context,
+            forced_roles=config.forced_roles,
         )
 
         running_games[state.game_id] = state
@@ -350,6 +362,143 @@ async def stop_all_games():
     return {"status": "all_stopped"}
 
 
+# ============================================================
+# Routes API - Expériences (role-forcing)
+# ============================================================
+
+@app.post("/api/experiment/start")
+async def start_experiment(config: ExperimentConfig):
+    """Lance une expérience avec role-forcing.
+
+    Phase 1: X parties avec la cible en Undercover
+    Phase 2: Y parties avec la cible en Mr. White
+    """
+    total_players = 1 + len(config.opponents)
+    if total_players < 3:
+        raise HTTPException(status_code=400, detail="Minimum 3 joueurs (cible + 2 adversaires)")
+    if total_players > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 joueurs")
+
+    total_games = config.games_as_uc + config.games_as_mw
+    session_id = db.create_session(config.session_name, config.level, total_games)
+
+    global batch_stop_flag
+    batch_stop_flag = False
+    asyncio.create_task(_run_experiment(config, session_id))
+
+    return {
+        "status": "started",
+        "total_games": total_games,
+        "games_as_uc": config.games_as_uc,
+        "games_as_mw": config.games_as_mw,
+        "session_id": session_id,
+    }
+
+
+async def _run_experiment(config: ExperimentConfig, session_id: int):
+    """Exécute une expérience en deux phases (UC puis MW)."""
+    target = config.target
+    all_players_cfg = [target] + config.opponents
+    total_games = config.games_as_uc + config.games_as_mw
+
+    print(f"\n{'='*60}")
+    print(f"🧪 EXPÉRIENCE: {target.name} ({target.model_id})")
+    print(f"   {config.games_as_uc} parties en UC + {config.games_as_mw} en MW")
+    print(f"   {len(config.opponents)} adversaires — Niveau {config.level}")
+    print(f"{'='*60}")
+
+    game_num = 0
+    phases = []
+    if config.games_as_uc > 0:
+        phases.append(("undercover", config.games_as_uc))
+    if config.games_as_mw > 0:
+        phases.append(("mr_white", config.games_as_mw))
+
+    for forced_role, num_games in phases:
+        print(f"\n── Phase: {target.name} en tant que {forced_role.upper()} ({num_games} parties) ──")
+
+        for i in range(num_games):
+            if batch_stop_flag:
+                break
+
+            game_num += 1
+            forced_roles = {target.name: forced_role}
+
+            engine = UndercoverEngine(ai_call=ai_call, event_callback=broadcast)
+            player_configs = [p.model_dump() for p in all_players_cfg]
+
+            state = engine.setup_game(
+                player_configs=player_configs,
+                level=config.level,
+                forced_roles=forced_roles,
+            )
+
+            running_games[state.game_id] = state
+            game_stop_flags[state.game_id] = False
+            game_pause_flags[state.game_id] = False
+
+            gid = state.game_id
+            engine._should_stop = lambda gid=gid: game_stop_flags.get(gid, False) or batch_stop_flag
+            engine._is_paused = lambda gid=gid: game_pause_flags.get(gid, False)
+
+            print(f"  ▶ Partie {game_num}/{total_games} [{forced_role}] — ID {state.game_id}")
+            await broadcast({
+                "event_type": "batch_progress",
+                "data": {
+                    "current_game": game_num,
+                    "total_games": total_games,
+                    "game_id": state.game_id,
+                    "experiment_phase": forced_role,
+                },
+            })
+
+            try:
+                state = await engine.run_game(state)
+                print(f"    ✅ Gagnant: {state.winner or '?'}")
+            except Exception as e:
+                print(f"    ❌ Erreur: {e}")
+                await broadcast({
+                    "event_type": "error",
+                    "data": {"message": f"Erreur expérience partie {game_num}: {str(e)}"},
+                })
+                continue
+
+            metrics = engine.compute_metrics(state)
+            for p in state.players:
+                if p.name in metrics["players"]:
+                    metrics["players"][p.name]["provider"] = p.provider
+
+            try:
+                db.save_game(metrics, session_id)
+                events_data = [
+                    {"timestamp": e.timestamp, "event_type": e.event_type,
+                     "round": e.round_num, "player": e.player, "data": e.data}
+                    for e in state.events
+                ]
+                db.save_game_events(state.game_id, events_data)
+            except Exception as e:
+                print(f"    Erreur sauvegarde: {e}")
+
+            if state.game_id in running_games:
+                del running_games[state.game_id]
+            if state.game_id in game_stop_flags:
+                del game_stop_flags[state.game_id]
+            if state.game_id in game_pause_flags:
+                del game_pause_flags[state.game_id]
+
+            if batch_stop_flag:
+                break
+
+            if game_num < total_games:
+                await asyncio.sleep(1)
+
+    print(f"\n🧪 Expérience terminée: {game_num} parties jouées")
+    await broadcast({
+        "event_type": "batch_complete",
+        "data": {"total_games": total_games, "session_id": session_id},
+    })
+
+
 @app.get("/api/game/{game_id}")
 async def get_game(game_id: str):
     """Récupère le détail d'une partie."""
@@ -384,6 +533,12 @@ async def get_game_reasoning(game_id: str):
 async def get_analytics(session_id: int | None = None):
     """Données complètes pour la page Analytics."""
     return db.get_rich_analytics(session_id=session_id)
+
+
+@app.get("/api/analytics/extended")
+async def get_extended_analytics(session_id: int | None = None):
+    """Analytics lourdes: courbes de survie, discours, styles, coûts."""
+    return db.get_extended_analytics(session_id=session_id)
 
 
 # ============================================================
@@ -447,11 +602,11 @@ async def delete_session(session_id: int):
 
 @app.get("/api/models/ollama")
 async def list_ollama_models():
-    """Liste les modèles Ollama installés."""
+    """Liste les modèles Ollama installés avec leur taille."""
     available = await ollama.is_available()
     if not available:
         return {"available": False, "models": [], "message": "Ollama n'est pas en cours d'exécution"}
-    models = await ollama.list_models()
+    models = await ollama.list_models_with_details()
     return {"available": True, "models": models}
 
 
@@ -474,39 +629,67 @@ async def list_openrouter_models():
 
 OPENROUTER_CATALOG = {
     "free": [
-        {"model_id": "openai/gpt-oss-120b:free", "name": "OpenAI gpt-oss 120B", "cost": "Gratuit", "context_length": 131072, "params_info": "117B MoE (5.1B actifs)"},
-        {"model_id": "openai/gpt-oss-20b:free", "name": "OpenAI gpt-oss 20B", "cost": "Gratuit", "context_length": 131072, "params_info": "21B MoE (3.6B actifs)"},
         {"model_id": "google/gemma-3-27b-it:free", "name": "Google Gemma 3 27B", "cost": "Gratuit", "context_length": 131072, "params_info": "27B"},
+        {"model_id": "google/gemma-3-12b-it:free", "name": "Google Gemma 3 12B", "cost": "Gratuit", "context_length": 32768, "params_info": "12B"},
         {"model_id": "google/gemma-3-4b-it:free", "name": "Google Gemma 3 4B", "cost": "Gratuit", "context_length": 32768, "params_info": "4B"},
-        {"model_id": "google/gemma-3n-e2b-it:free", "name": "Google Gemma 3n 2B", "cost": "Gratuit", "context_length": 32768, "params_info": "2B (6B arch)"},
+        {"model_id": "google/gemma-3n-e4b-it:free", "name": "Google Gemma 3n 4B", "cost": "Gratuit", "context_length": 8192, "params_info": "4B"},
         {"model_id": "mistralai/mistral-small-3.1-24b-instruct:free", "name": "Mistral Small 3.1 24B", "cost": "Gratuit", "context_length": 128000, "params_info": "24B"},
+        {"model_id": "meta-llama/llama-3.3-70b-instruct:free", "name": "Meta Llama 3.3 70B", "cost": "Gratuit", "context_length": 128000, "params_info": "70B"},
+        {"model_id": "meta-llama/llama-3.2-3b-instruct:free", "name": "Meta Llama 3.2 3B", "cost": "Gratuit", "context_length": 131072, "params_info": "3B"},
+        {"model_id": "nvidia/nemotron-3-super-120b-a12b:free", "name": "NVIDIA Nemotron 3 Super 120B", "cost": "Gratuit", "context_length": 262144, "params_info": "120B MoE (12B actifs)"},
         {"model_id": "nvidia/nemotron-3-nano-30b-a3b:free", "name": "NVIDIA Nemotron 3 Nano 30B", "cost": "Gratuit", "context_length": 256000, "params_info": "30B MoE"},
         {"model_id": "nvidia/nemotron-nano-9b-v2:free", "name": "NVIDIA Nemotron Nano 9B V2", "cost": "Gratuit", "context_length": 128000, "params_info": "9B"},
-        {"model_id": "qwen/qwen3-coder:free", "name": "Qwen3 Coder 480B", "cost": "Gratuit", "context_length": 262144, "params_info": "480B MoE (35B actifs)"},
-        {"model_id": "qwen/qwen3-next-80b-a3b-instruct:free", "name": "Qwen3 Next 80B A3B", "cost": "Gratuit", "context_length": 131072, "params_info": "80B MoE (3B actifs)"},
+
+        {"model_id": "qwen/qwen3-coder:free", "name": "Qwen3 Coder 480B", "cost": "Gratuit", "context_length": 262000, "params_info": "480B MoE (35B actifs)"},
+        {"model_id": "qwen/qwen3-next-80b-a3b-instruct:free", "name": "Qwen3 Next 80B A3B", "cost": "Gratuit", "context_length": 262144, "params_info": "80B MoE (3B actifs)"},
         {"model_id": "qwen/qwen3-4b:free", "name": "Qwen3 4B", "cost": "Gratuit", "context_length": 40960, "params_info": "4B"},
-        {"model_id": "stepfun/step-3.5-flash:free", "name": "StepFun Step 3.5 Flash", "cost": "Gratuit", "context_length": 256000, "params_info": "196B MoE (11B actifs)"},
-        {"model_id": "arcee-ai/trinity-large-preview:free", "name": "Arcee Trinity Large", "cost": "Gratuit", "context_length": 262144, "params_info": "400B MoE (13B actifs)"},
-        {"model_id": "arcee-ai/trinity-mini:free", "name": "Arcee Trinity Mini", "cost": "Gratuit", "context_length": 131072, "params_info": "26B MoE (3B actifs)"},
+        {"model_id": "stepfun/step-3.5-flash:free", "name": "StepFun Step 3.5 Flash", "cost": "Gratuit", "context_length": 256000, "params_info": "196B MoE"},
+        {"model_id": "arcee-ai/trinity-large-preview:free", "name": "Arcee Trinity Large", "cost": "Gratuit", "context_length": 131000, "params_info": "400B MoE"},
+        {"model_id": "arcee-ai/trinity-mini:free", "name": "Arcee Trinity Mini", "cost": "Gratuit", "context_length": 131072, "params_info": "26B MoE"},
         {"model_id": "z-ai/glm-4.5-air:free", "name": "Z.ai GLM 4.5 Air", "cost": "Gratuit", "context_length": 131072, "params_info": "MoE"},
-        {"model_id": "liquid/lfm-2.5-1.2b-thinking:free", "name": "LiquidAI LFM 1.2B Thinking", "cost": "Gratuit", "context_length": 32768, "params_info": "1.2B"},
-        {"model_id": "liquid/lfm-2.5-1.2b-instruct:free", "name": "LiquidAI LFM 1.2B Instruct", "cost": "Gratuit", "context_length": 32768, "params_info": "1.2B"},
-        {"model_id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", "name": "Venice Uncensored 24B", "cost": "Gratuit", "context_length": 32768, "params_info": "24B"},
         {"model_id": "nousresearch/hermes-3-llama-3.1-405b:free", "name": "Nous Hermes 3 405B", "cost": "Gratuit", "context_length": 131072, "params_info": "405B"},
-        {"model_id": "deepseek/deepseek-chat-v3-0324:free", "name": "DeepSeek V3", "cost": "Gratuit", "context_length": 163840, "params_info": "685B MoE"},
+        {"model_id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", "name": "Venice Uncensored 24B", "cost": "Gratuit", "context_length": 32768, "params_info": "24B"},
     ],
     "cheap": [
-        {"model_id": "openai/gpt-4o-mini", "name": "GPT-4o Mini (OpenAI)", "cost": "$0.60/M", "context_length": 128000, "params_info": ""},
-        {"model_id": "openai/gpt-5-nano", "name": "GPT-5 Nano (OpenAI)", "cost": "$0.45/M", "context_length": 400000, "params_info": ""},
-        {"model_id": "openai/gpt-5-mini", "name": "GPT-5 Mini (OpenAI)", "cost": "$2.25/M", "context_length": 400000, "params_info": ""},
+        # --- OpenAI ---
+        {"model_id": "openai/gpt-4o-mini", "name": "GPT-4o Mini (OpenAI)", "cost": "$0.15/M", "context_length": 128000, "params_info": ""},
+        {"model_id": "openai/gpt-4.1-nano", "name": "GPT-4.1 Nano (OpenAI)", "cost": "$0.10/M", "context_length": 1047576, "params_info": ""},
+        {"model_id": "openai/gpt-4.1-mini", "name": "GPT-4.1 Mini (OpenAI)", "cost": "$0.40/M", "context_length": 1047576, "params_info": ""},
+        {"model_id": "openai/gpt-4.1", "name": "GPT-4.1 (OpenAI)", "cost": "$2.00/M", "context_length": 1047576, "params_info": ""},
+        {"model_id": "openai/gpt-5-nano", "name": "GPT-5 Nano (OpenAI)", "cost": "$0.05/M", "context_length": 400000, "params_info": ""},
+        {"model_id": "openai/gpt-5-mini", "name": "GPT-5 Mini (OpenAI)", "cost": "$0.25/M", "context_length": 400000, "params_info": ""},
+        {"model_id": "openai/gpt-5", "name": "GPT-5 (OpenAI)", "cost": "$1.25/M", "context_length": 400000, "params_info": ""},
+        {"model_id": "openai/o4-mini", "name": "o4-mini (OpenAI)", "cost": "$1.10/M", "context_length": 200000, "params_info": "reasoning"},
+        {"model_id": "openai/o3-mini", "name": "o3-mini (OpenAI)", "cost": "$1.10/M", "context_length": 200000, "params_info": "reasoning"},
+        # --- Anthropic ---
         {"model_id": "anthropic/claude-3-haiku", "name": "Claude 3 Haiku (Anthropic)", "cost": "$0.80/M", "context_length": 200000, "params_info": ""},
         {"model_id": "anthropic/claude-haiku-4.5", "name": "Claude 4.5 Haiku (Anthropic)", "cost": "$1.00/M", "context_length": 200000, "params_info": ""},
-        {"model_id": "google/gemini-2.0-flash-lite-001", "name": "Gemini 2.0 Flash Lite (Google)", "cost": "$0.08/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "anthropic/claude-sonnet-4", "name": "Claude Sonnet 4 (Anthropic)", "cost": "$3.00/M", "context_length": 200000, "params_info": ""},
+        {"model_id": "anthropic/claude-sonnet-4.5", "name": "Claude Sonnet 4.5 (Anthropic)", "cost": "$3.00/M", "context_length": 1000000, "params_info": ""},
+        {"model_id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 (Anthropic)", "cost": "$3.00/M", "context_length": 1000000, "params_info": ""},
+        {"model_id": "anthropic/claude-opus-4.5", "name": "Claude Opus 4.5 (Anthropic)", "cost": "$5.00/M", "context_length": 200000, "params_info": ""},
+        {"model_id": "anthropic/claude-opus-4.6", "name": "Claude Opus 4.6 (Anthropic)", "cost": "$5.00/M", "context_length": 1000000, "params_info": ""},
+        # --- Google ---
+        {"model_id": "google/gemini-2.0-flash-lite-001", "name": "Gemini 2.0 Flash Lite (Google)", "cost": "$0.07/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-2.0-flash-001", "name": "Gemini 2.0 Flash (Google)", "cost": "$0.10/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-2.5-flash-lite", "name": "Gemini 2.5 Flash Lite (Google)", "cost": "$0.10/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash (Google)", "cost": "$0.30/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-2.5-pro", "name": "Gemini 2.5 Pro (Google)", "cost": "$1.25/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-3-flash-preview", "name": "Gemini 3 Flash Preview (Google)", "cost": "$0.15/M", "context_length": 1048576, "params_info": ""},
+        # --- Autres ---
         {"model_id": "x-ai/grok-3-mini-beta", "name": "Grok 3 Mini (xAI)", "cost": "$0.30/M", "context_length": 131072, "params_info": ""},
         {"model_id": "x-ai/grok-4-fast", "name": "Grok 4 Fast (xAI)", "cost": "$0.20/M", "context_length": 2000000, "params_info": ""},
+        {"model_id": "x-ai/grok-4.1-fast", "name": "Grok 4.1 Fast (xAI)", "cost": "$0.20/M", "context_length": 2000000, "params_info": ""},
         {"model_id": "mistralai/ministral-3b-2512", "name": "Ministral 3B (Mistral)", "cost": "$0.02/M", "context_length": 131072, "params_info": "3B"},
         {"model_id": "deepseek/deepseek-chat", "name": "DeepSeek V3.1 (DeepSeek)", "cost": "$0.30/M", "context_length": 163840, "params_info": "685B MoE"},
+        {"model_id": "deepseek/deepseek-v3.2", "name": "DeepSeek V3.2 (DeepSeek)", "cost": "$0.30/M", "context_length": 163840, "params_info": "685B MoE"},
+        {"model_id": "moonshotai/kimi-k2.5", "name": "Kimi K2.5 (Moonshot)", "cost": "$0.60/M", "context_length": 131072, "params_info": ""},
         {"model_id": "qwen/qwen-2.5-72b-instruct", "name": "Qwen 2.5 72B (Alibaba)", "cost": "$0.35/M", "context_length": 32768, "params_info": "72B"},
+        {"model_id": "qwen/qwen3.5-flash-02-23", "name": "Qwen3.5 Flash (Alibaba)", "cost": "$0.10/M", "context_length": 1000000, "params_info": "MoE"},
+        {"model_id": "qwen/qwen3.5-9b", "name": "Qwen3.5 9B (Alibaba)", "cost": "$0.10/M", "context_length": 262144, "params_info": "9B"},
+        {"model_id": "bytedance-seed/seed-2.0-lite", "name": "Seed 2.0 Lite (ByteDance)", "cost": "$0.25/M", "context_length": 262144, "params_info": ""},
+        {"model_id": "inception/mercury-2", "name": "Mercury 2 (Inception)", "cost": "$0.25/M", "context_length": 128000, "params_info": ""},
+        {"model_id": "minimax/minimax-m2.5", "name": "MiniMax M2.5 (MiniMax)", "cost": "$0.27/M", "context_length": 196608, "params_info": ""},
         {"model_id": "amazon/nova-micro-v1", "name": "Nova Micro (Amazon)", "cost": "$0.04/M", "context_length": 128000, "params_info": ""},
         {"model_id": "amazon/nova-lite-v1", "name": "Nova Lite (Amazon)", "cost": "$0.06/M", "context_length": 300000, "params_info": ""},
         {"model_id": "meta-llama/llama-3.1-8b-instruct", "name": "Llama 3.1 8B (Meta)", "cost": "$0.02/M", "context_length": 16384, "params_info": "8B"},
@@ -582,12 +765,13 @@ async def get_recommended_models():
         info = model_ping_cache.get(model_id)
         return info["ok"] if info else True  # Non testé → afficher
 
-    # Modèles Ollama : seulement ceux installés + alive
+    # Modèles Ollama : installés + alive + filtrés par ceux explicitement activés (si gérés)
     ollama_installed = await ollama.list_models()
+    ollama_enabled_ids = {m["model_id"] for m in enabled if m.get("provider") == "ollama"}
     ollama_models = [
         {"id": m, "name": m.split(":")[0].title() + " " + m.split(":")[-1] if ":" in m else m, "size": "", "quality": ""}
         for m in ollama_installed
-        if _is_alive(m)
+        if _is_alive(m) and (not ollama_enabled_ids or m in ollama_enabled_ids)
     ]
 
     return {
@@ -650,13 +834,37 @@ async def health_check():
 # ============================================================
 
 async def _ping_one_model(model_id: str, provider: str) -> dict:
-    """Ping un seul modèle avec un prompt minimal."""
+    """Ping un seul modèle avec un appel ultra-léger (max_tokens=1, sans retry)."""
     t0 = time.time()
     try:
         if provider == "ollama":
-            resp = await ollama.chat(model_id, "Reply OK.", "Hi", max_tokens=50)
+            resp = await ollama.chat(model_id, "Reply OK.", "Hi", max_tokens=5)
         else:
-            resp = await openrouter.chat(model_id, "Reply OK.", "Hi", max_tokens=50)
+            # Appel direct ultra-léger sans passer par le retry du provider
+            url = f"{openrouter.BASE_URL}/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {openrouter.api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "Undercover AI Arena",
+            }
+            payload = {
+                "model": model_id,
+                "messages": [{"role": "user", "content": "Hi"}],
+            }
+            # Les modèles OpenAI récents (GPT-4.1+, GPT-5.x, o-series) rejettent max_tokens
+            # et exigent max_completion_tokens >= 16. Pour le ping on n'en met pas du tout.
+            if not model_id.startswith("openai/"):
+                payload["max_tokens"] = 1
+            response = await openrouter.client.post(url, json=payload, headers=headers, timeout=15.0)
+            latency = int((time.time() - t0) * 1000)
+            if response.status_code == 200:
+                return {"ok": True, "latency_ms": latency, "error": "", "timestamp": time.time()}
+            elif response.status_code == 429:
+                return {"ok": True, "latency_ms": latency, "error": "rate-limited", "timestamp": time.time()}
+            else:
+                body = response.text[:150]
+                return {"ok": False, "latency_ms": latency, "error": f"HTTP {response.status_code}: {body}", "timestamp": time.time()}
         latency = int((time.time() - t0) * 1000)
         if not resp or (isinstance(resp, str) and "error" in resp.lower() and resp.strip().startswith("{")):
             return {"ok": False, "latency_ms": latency, "error": resp or "empty", "timestamp": time.time()}

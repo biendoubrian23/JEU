@@ -2,7 +2,7 @@
 
 import { GameEvent } from "@/lib/types";
 import { clsx } from "clsx";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 interface ChatRoomProps {
   events: GameEvent[];
@@ -11,9 +11,17 @@ interface ChatRoomProps {
 
 export default function ChatRoom({ events, showReasoning }: ChatRoomProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottom = useRef(true);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Consider "near bottom" if within 120px of the bottom
+    isNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && isNearBottom.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [events]);
@@ -93,17 +101,19 @@ export default function ChatRoom({ events, showReasoning }: ChatRoomProps) {
         <span className="text-xs text-gray-500">{events.length} événements</span>
       </div>
 
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-3 space-y-2"
-        style={{ maxHeight: 500 }}
-      >
-        {events.length === 0 ? (
-          <div className="text-center text-gray-400 text-sm py-8">
-            Les messages apparaîtront ici pendant la partie...
-          </div>
-        ) : (
-          events.map((event, i) => {
+      <div className="relative flex-1" style={{ maxHeight: 720 }}>
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="overflow-y-auto p-3 space-y-2 h-full"
+          style={{ overscrollBehavior: "contain" }}
+        >
+          {events.length === 0 ? (
+            <div className="text-center text-gray-400 text-sm py-8">
+              Les messages apparaîtront ici pendant la partie...
+            </div>
+          ) : (
+            events.map((event, i) => {
             const { main, detail } = formatEvent(event);
             return (
               <div
@@ -136,6 +146,19 @@ export default function ChatRoom({ events, showReasoning }: ChatRoomProps) {
             );
           })
         )}
+        {/* Extra padding so last messages aren't hidden behind gradient */}
+        <div className="h-10" />
+      </div>
+
+      {/* Bottom blur/fade overlay */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none rounded-b-xl"
+        style={{
+          background: "linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 40%, rgba(255,255,255,0) 100%)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+        }}
+      />
       </div>
     </div>
   );

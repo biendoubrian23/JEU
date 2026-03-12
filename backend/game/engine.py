@@ -2,6 +2,7 @@
 import asyncio
 import json
 import random
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -14,6 +15,7 @@ from game.prompts import (
     role_prompt,
     clue_prompt,
     discussion_prompt,
+    rebuttal_prompt,
     vote_prompt,
     mr_white_guess_prompt,
     level2_memory_prompt,
@@ -118,10 +120,12 @@ class UndercoverEngine:
         level: int = 1,
         level_context: str = "",
         word_pair: tuple[str, str] | None = None,
+        forced_roles: dict[str, str] | None = None,
     ) -> GameState:
         """Initialise une nouvelle partie.
 
         player_configs: [{"name": "GPT-1", "model_id": "openai/gpt-4o-mini", "provider": "openrouter"}, ...]
+        forced_roles: {"player_name": "undercover"} — force un rôle spécifique
         """
         game_id = str(uuid.uuid4())[:8]
         nb_players = len(player_configs)
@@ -143,18 +147,48 @@ class UndercoverEngine:
 
         # Distribuer les rôles
         nb_civils, nb_undercover, nb_mr_white = get_role_distribution(nb_players)
-        roles = (
-            [Role.CIVIL] * nb_civils
-            + [Role.UNDERCOVER] * nb_undercover
-            + [Role.MR_WHITE] * nb_mr_white
-        )
-        random.shuffle(roles)
 
-        for player, role in zip(players, roles):
-            player.role = role
-            if role == Role.CIVIL:
+        if forced_roles:
+            # Assigner les rôles forcés d'abord
+            forced_count = {"civil": 0, "undercover": 0, "mr_white": 0}
+            unforced_players = []
+            for player in players:
+                forced_role_str = forced_roles.get(player.name)
+                if forced_role_str and forced_role_str in ("civil", "undercover", "mr_white"):
+                    player.role = Role(forced_role_str)
+                    forced_count[forced_role_str] += 1
+                else:
+                    unforced_players.append(player)
+
+            # Calculer les rôles restants
+            remaining = (
+                [Role.CIVIL] * max(0, nb_civils - forced_count["civil"])
+                + [Role.UNDERCOVER] * max(0, nb_undercover - forced_count["undercover"])
+                + [Role.MR_WHITE] * max(0, nb_mr_white - forced_count["mr_white"])
+            )
+            # Ajuster si déséquilibre (plus de forcés que prévu)
+            while len(remaining) < len(unforced_players):
+                remaining.append(Role.CIVIL)
+            remaining = remaining[:len(unforced_players)]
+            random.shuffle(remaining)
+
+            for player, role in zip(unforced_players, remaining):
+                player.role = role
+        else:
+            roles = (
+                [Role.CIVIL] * nb_civils
+                + [Role.UNDERCOVER] * nb_undercover
+                + [Role.MR_WHITE] * nb_mr_white
+            )
+            random.shuffle(roles)
+            for player, role in zip(players, roles):
+                player.role = role
+
+        # Assigner les mots selon le rôle
+        for player in players:
+            if player.role == Role.CIVIL:
                 player.word = civil_word
-            elif role == Role.UNDERCOVER:
+            elif player.role == Role.UNDERCOVER:
                 player.word = undercover_word
             else:
                 player.word = None  # Mr. White
@@ -217,10 +251,17 @@ class UndercoverEngine:
                 system_prompt=system,
                 user_prompt=user_prompt,
             )
-            if not raw_response:
+            if not raw_response or not raw_response.strip():
                 print(f"  [!] {player.name}: réponse vide")
                 return {"error": "Réponse vide", "raw": ""}
-            parsed = self._parse_json_response(raw_response)
+
+            # Nettoyer les balises <think>...</think> des modèles "thinking"
+            cleaned = re.sub(r"<think>.*?</think>", "", raw_response, flags=re.DOTALL).strip()
+            if not cleaned:
+                print(f"  [!] {player.name}: réponse vide après nettoyage <think>")
+                return {"error": "Réponse vide (thinking only)", "raw": raw_response[:200]}
+
+            parsed = self._parse_json_response(cleaned)
             # Détecter les erreurs retournées par le provider
             if "error" in parsed and "clue" not in parsed and "vote" not in parsed and "message" not in parsed:
                 print(f"  [!] {player.name}: erreur provider — {parsed['error'][:80]}")
@@ -292,14 +333,30 @@ class UndercoverEngine:
 
         return round_clues
 
+    def _collect_clues_history(self, state: GameState, exclude_current_round: bool = True) -> list[dict]:
+        """Collecte l'historique complet des indices des tours précédents."""
+        history = []
+        for event in state.events:
+            if event.event_type == "clue":
+                if exclude_current_round and event.round_num == state.current_round:
+                    continue
+                history.append({
+                    "player": event.player,
+                    "word": event.data.get("clue", "?"),
+                    "round": event.round_num,
+                })
+        return history
+
     async def play_discussion_phase(self, state: GameState, round_clues: list[dict]) -> list[dict]:
-        """Phase de discussion : les joueurs échangent."""
+        """Phase de discussion : 1er tour d'avis + 2e tour de réplique."""
         state.phase = "discussion"
         alive = self._get_alive_players(state)
 
-        discussion_messages = []
+        # Historique complet des indices des tours précédents
+        clues_history = self._collect_clues_history(state)
 
-        # Chaque joueur parle une fois (ordre aléatoire)
+        # ── 1er tour : chacun donne son avis ──
+        first_round_messages = []
         order = list(alive)
         random.shuffle(order)
 
@@ -308,12 +365,13 @@ class UndercoverEngine:
                 state.current_round,
                 round_clues,
                 state.eliminated,
+                all_clues_history=clues_history if clues_history else None,
             )
 
-            # Ajouter les messages de discussion déjà émis ce tour
-            if discussion_messages:
+            # Ajouter les messages déjà émis dans ce 1er tour
+            if first_round_messages:
                 prompt += "\n\nMessages précédents dans la discussion :\n"
-                for msg in discussion_messages:
+                for msg in first_round_messages:
                     prompt += f"- {msg['player']}: {msg['message']}\n"
 
             response = await self._ai_respond(player, state, prompt)
@@ -321,7 +379,6 @@ class UndercoverEngine:
             message = response.get("message", response.get("raw", "Hmm, intéressant..."))
             reasoning = response.get("reasoning", "")
 
-            # Tronquer si trop long
             if isinstance(message, str) and len(message) > 300:
                 message = message[:297] + "..."
 
@@ -332,7 +389,7 @@ class UndercoverEngine:
             })
 
             msg_data = {"message": message, "reasoning": reasoning}
-            discussion_messages.append({"player": player.name, "message": message})
+            first_round_messages.append({"player": player.name, "message": message})
 
             event = GameEvent(
                 timestamp=time.time(),
@@ -346,13 +403,66 @@ class UndercoverEngine:
 
             await asyncio.sleep(0.3)
 
-        return discussion_messages
+        await self._check_controls()
 
-    async def play_vote_phase(self, state: GameState, discussion_messages: list[dict]) -> dict:
+        # ── 2e tour : réplique / défense ──
+        rebuttal_messages = []
+        rebuttal_order = list(alive)
+        random.shuffle(rebuttal_order)
+
+        for player in rebuttal_order:
+            prompt = rebuttal_prompt(
+                state.current_round,
+                first_round_messages,
+            )
+
+            # Ajouter les répliques déjà émises
+            if rebuttal_messages:
+                prompt += "\n\nRépliques précédentes :\n"
+                for msg in rebuttal_messages:
+                    prompt += f"- {msg['player']}: {msg['message']}\n"
+
+            response = await self._ai_respond(player, state, prompt)
+
+            message = response.get("message", response.get("raw", "Je maintiens ma position."))
+            reasoning = response.get("reasoning", "")
+
+            if isinstance(message, str) and len(message) > 300:
+                message = message[:297] + "..."
+
+            player.reasoning_log.append({
+                "round": state.current_round,
+                "phase": "rebuttal",
+                "reasoning": reasoning,
+            })
+
+            msg_data = {"message": message, "reasoning": reasoning}
+            rebuttal_messages.append({"player": player.name, "message": message})
+
+            event = GameEvent(
+                timestamp=time.time(),
+                event_type="discussion",
+                round_num=state.current_round,
+                player=player.name,
+                data={**msg_data, "is_rebuttal": True},
+            )
+            state.events.append(event)
+            await self.emit(event)
+
+            await asyncio.sleep(0.3)
+
+        # Retourne tous les messages (1er tour + répliques) pour le vote
+        return first_round_messages + rebuttal_messages
+
+    async def play_vote_phase(self, state: GameState, discussion_messages: list[dict],
+                              round_clues: list[dict] | None = None) -> dict:
         """Phase de vote : chaque joueur vote pour éliminer quelqu'un."""
         state.phase = "vote"
         alive = self._get_alive_players(state)
         alive_names = [p.name for p in alive]
+
+        # Historique complet des indices pour contextualiser le vote
+        clues_history = self._collect_clues_history(state)
 
         votes = {}  # {voter_name: target_name}
 
@@ -366,6 +476,8 @@ class UndercoverEngine:
                 alive_names,
                 player.name,
                 discussion_messages,
+                round_clues=round_clues,
+                all_clues_history=clues_history if clues_history else None,
             )
             response = await self._ai_respond(player, state, prompt)
 
@@ -562,7 +674,7 @@ class UndercoverEngine:
                 await self._check_controls()
 
                 # Phase de vote
-                votes = await self.play_vote_phase(state, discussion)
+                votes = await self.play_vote_phase(state, discussion, round_clues=round_clues)
 
                 # Résolution de l'élimination
                 eliminated = await self.resolve_elimination(state, votes)

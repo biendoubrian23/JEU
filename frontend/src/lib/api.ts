@@ -90,6 +90,30 @@ export async function getAnalytics(sessionId?: number) {
   return res.json();
 }
 
+export async function getExtendedAnalytics(sessionId?: number) {
+  let url = `${API_BASE}/api/analytics/extended`;
+  if (sessionId) url += `?session_id=${sessionId}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function startExperiment(config: {
+  target: { name: string; model_id: string; provider: string };
+  opponents: Array<{ name: string; model_id: string; provider: string }>;
+  games_as_uc: number;
+  games_as_mw: number;
+  level: number;
+  session_name: string;
+}) {
+  const res = await fetch(`${API_BASE}/api/experiment/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 // ============================================================
 // Configuration
 // ============================================================

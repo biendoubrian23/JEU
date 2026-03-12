@@ -30,9 +30,14 @@ class OpenRouterProvider(AIProvider):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "max_tokens": max_tokens,
             "temperature": 0.7,
         }
+        # Les modèles OpenAI récents (GPT-4.1+, GPT-5.x, o-series) rejettent max_tokens
+        # et exigent max_completion_tokens avec un minimum de 16
+        if model.startswith("openai/") and not model.startswith("openai/gpt-4o"):
+            payload["max_completion_tokens"] = max(max_tokens, 16)
+        else:
+            payload["max_tokens"] = max_tokens
 
         last_error = ""
         for attempt in range(self.MAX_RETRIES):

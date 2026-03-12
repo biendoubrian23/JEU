@@ -8,8 +8,9 @@ import {
   removeEnabledModel,
   pingOneModel,
   pingAllModels,
+  getOllamaModels,
 } from "@/lib/api";
-import type { CatalogModel, EnabledModel } from "@/lib/types";
+import type { CatalogModel, EnabledModel, OllamaModelDetail } from "@/lib/types";
 
 type PingResult = { ok: boolean; latency_ms: number; error: string };
 
@@ -25,6 +26,8 @@ export default function ModelsPage() {
   const [pingResults, setPingResults] = useState<Record<string, PingResult>>({});
   const [pingingId, setPingingId] = useState<string | null>(null);
   const [pingAllRunning, setPingAllRunning] = useState(false);
+  const [ollamaModels, setOllamaModels] = useState<OllamaModelDetail[]>([]);
+  const [ollamaAvailable, setOllamaAvailable] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -33,12 +36,15 @@ export default function ModelsPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [catalogData, enabledData] = await Promise.all([
+      const [catalogData, enabledData, ollamaData] = await Promise.all([
         getModelCatalog(),
         getEnabledModels(),
+        getOllamaModels(),
       ]);
       setCatalog(catalogData);
       setEnabledIds(new Set((enabledData as EnabledModel[]).map((m) => m.model_id)));
+      setOllamaModels(ollamaData.models || []);
+      setOllamaAvailable(ollamaData.available ?? false);
     } catch (e) {
       console.error("Erreur chargement modèles:", e);
     }
@@ -69,14 +75,20 @@ export default function ModelsPage() {
   const stats = useMemo(() => {
     const enabledFree = allModels.filter((m) => m.category === "free" && enabledIds.has(m.model_id)).length;
     const enabledCheap = allModels.filter((m) => m.category === "cheap" && enabledIds.has(m.model_id)).length;
+    const anyOllamaInDB = ollamaModels.some((m) => enabledIds.has(m.name));
+    const enabledLocal = anyOllamaInDB
+      ? ollamaModels.filter((m) => enabledIds.has(m.name)).length
+      : ollamaModels.length;
     return {
       totalFree: catalog.free?.length || 0,
       totalCheap: catalog.cheap?.length || 0,
+      totalLocal: ollamaModels.length,
       enabledFree,
       enabledCheap,
-      total: enabledFree + enabledCheap,
+      enabledLocal,
+      total: enabledFree + enabledCheap + enabledLocal,
     };
-  }, [allModels, enabledIds, catalog]);
+  }, [allModels, enabledIds, catalog, ollamaModels]);
 
   const handleToggle = async (model: CatalogModel & { category: string }) => {
     const id = model.model_id;
@@ -139,6 +151,64 @@ export default function ModelsPage() {
     });
   };
 
+  const ollamaHasAnyEnabled = ollamaModels.some((m) => enabledIds.has(m.name));
+  const isOllamaEnabled = (name: string) => ollamaHasAnyEnabled ? enabledIds.has(name) : true;
+
+  const handleOllamaToggle = async (om: OllamaModelDetail) => {
+    const id = om.name;
+    setToggling(id);
+    try {
+      if (!ollamaHasAnyEnabled) {
+        // Première interaction : activer tous les autres, désactiver celui-ci
+        for (const other of ollamaModels) {
+          if (other.name !== id) {
+            await addEnabledModel({ model_id: other.name, name: other.name, provider: "ollama", category: "local", cost: "Gratuit", params_info: other.size });
+          }
+        }
+        setEnabledIds((prev) => {
+          const next = new Set(prev);
+          ollamaModels.forEach((other) => { if (other.name !== id) next.add(other.name); });
+          return next;
+        });
+      } else if (enabledIds.has(id)) {
+        await removeEnabledModel(id);
+        setEnabledIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+      } else {
+        await addEnabledModel({ model_id: id, name: id, provider: "ollama", category: "local", cost: "Gratuit", params_info: om.size });
+        setEnabledIds((prev) => new Set(prev).add(id));
+      }
+    } catch (e) {
+      console.error("Erreur toggle Ollama:", e);
+    }
+    setToggling(null);
+  };
+
+  const ollamaEnableAll = async () => {
+    for (const om of ollamaModels) {
+      if (!enabledIds.has(om.name)) {
+        await addEnabledModel({ model_id: om.name, name: om.name, provider: "ollama", category: "local", cost: "Gratuit", params_info: om.size });
+      }
+    }
+    setEnabledIds((prev) => {
+      const next = new Set(prev);
+      ollamaModels.forEach((om) => next.add(om.name));
+      return next;
+    });
+  };
+
+  const ollamaDisableAll = async () => {
+    for (const om of ollamaModels) {
+      if (enabledIds.has(om.name) || !ollamaHasAnyEnabled) {
+        await removeEnabledModel(om.name).catch(() => null);
+      }
+    }
+    setEnabledIds((prev) => {
+      const next = new Set(prev);
+      ollamaModels.forEach((om) => next.delete(om.name));
+      return next;
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -158,11 +228,22 @@ export default function ModelsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-arena-border p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Modèles activés</div>
           <div className="mt-1 text-2xl font-bold text-arena-accent">{stats.total}</div>
-          <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalFree + stats.totalCheap} disponibles</div>
+          <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalFree + stats.totalCheap + stats.totalLocal} disponibles</div>
+        </div>
+        <div className="bg-white rounded-xl border border-arena-border p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Locaux</div>
+            <div className="flex gap-1">
+              <button onClick={ollamaEnableAll} className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors">Tout</button>
+              <button onClick={ollamaDisableAll} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">Aucun</button>
+            </div>
+          </div>
+          <div className="mt-1 text-2xl font-bold text-purple-600">{stats.enabledLocal}</div>
+          <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalLocal} installés</div>
         </div>
         <div className="bg-white rounded-xl border border-arena-border p-4">
           <div className="flex items-center justify-between">
@@ -186,6 +267,137 @@ export default function ModelsPage() {
           <div className="mt-1 text-2xl font-bold text-blue-600">{stats.enabledCheap}</div>
           <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalCheap} payants économiques</div>
         </div>
+      </div>
+
+      {/* Modèles locaux — Ollama */}
+      <div className="bg-white rounded-xl border border-arena-border overflow-hidden">
+        <div className="px-4 py-3 bg-purple-50 border-b border-arena-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ollamaAvailable ? "bg-green-400" : "bg-red-400"}`} />
+            <span className="text-sm font-semibold text-gray-800">Modèles locaux — Ollama</span>
+            <span className="text-xs text-gray-500 ml-1">
+              {ollamaAvailable ? `${ollamaModels.length} installé(s)` : "Non disponible"}
+            </span>
+          </div>
+          {ollamaAvailable && ollamaModels.length > 0 && (
+            <div className="flex gap-1">
+              <button onClick={ollamaEnableAll} className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors">Tout activer</button>
+              <button onClick={ollamaDisableAll} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">Tout désactiver</button>
+            </div>
+          )}
+        </div>
+        {!ollamaAvailable ? (
+          <div className="px-4 py-6 text-sm text-gray-400 text-center">
+            Ollama n&apos;est pas en cours d&apos;exécution. Lancez{" "}
+            <code className="bg-gray-100 px-1 rounded font-mono text-xs">ollama serve</code>.
+          </div>
+        ) : ollamaModels.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-gray-400 text-center">
+            Aucun modèle installé. Lancez{" "}
+            <code className="bg-gray-100 px-1 rounded font-mono text-xs">ollama pull llama3.2:3b</code>.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-[1fr_100px_110px_80px] gap-4 px-4 py-3 bg-gray-50 border-b border-arena-border text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <div>Modèle</div>
+              <div>Taille</div>
+              <div className="text-center">
+                <button
+                  onClick={async () => {
+                    setPingAllRunning(true);
+                    for (const om of ollamaModels) {
+                      setPingingId(om.name);
+                      try {
+                        const res = await pingOneModel(om.name);
+                        setPingResults((prev) => ({ ...prev, [om.name]: res }));
+                      } catch { /* ignore */ }
+                    }
+                    setPingingId(null);
+                    setPingAllRunning(false);
+                  }}
+                  disabled={pingAllRunning}
+                  className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                    pingAllRunning ? "bg-gray-200 text-gray-400 cursor-wait" : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
+                  }`}
+                >
+                  {pingAllRunning ? "⏳..." : "🏓 Ping tout"}
+                </button>
+              </div>
+              <div className="text-right">Actif</div>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {ollamaModels.map((om) => {
+                const active = isOllamaEnabled(om.name);
+                const isTogglingThis = toggling === om.name;
+                const ping = pingResults[om.name];
+                const isPinging = pingingId === om.name;
+                return (
+                  <div
+                    key={om.name}
+                    className={`grid grid-cols-[1fr_100px_110px_80px] gap-4 px-4 py-3 items-center transition-colors ${
+                      active ? "bg-white" : "bg-gray-50/50"
+                    } hover:bg-purple-50/30`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full flex-shrink-0 bg-purple-400" />
+                        <span className={`text-sm font-medium truncate ${active ? "text-gray-900" : "text-gray-400"}`}>
+                          {om.name.includes(":") ? om.name.split(":")[0] : om.name}
+                        </span>
+                        {om.name.includes(":") && (
+                          <span className="text-[11px] text-gray-400 flex-shrink-0">{om.name.split(":")[1]}</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-400 truncate mt-0.5 pl-4">{om.name}</div>
+                    </div>
+                    <div className="text-xs font-medium text-purple-700">{om.size}</div>
+                    <div className="flex justify-center">
+                      <button
+                        onClick={async () => {
+                          setPingingId(om.name);
+                          try {
+                            const res = await pingOneModel(om.name);
+                            setPingResults((prev) => ({ ...prev, [om.name]: res }));
+                          } catch { /* ignore */ }
+                          setPingingId(null);
+                        }}
+                        disabled={isPinging}
+                        className={`text-xs px-2 py-1 rounded-lg transition-all ${
+                          isPinging
+                            ? "bg-gray-100 text-gray-400 cursor-wait"
+                            : ping
+                            ? ping.ok
+                              ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                              : "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                            : "bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100"
+                        }`}
+                        title={ping?.error || (ping?.ok ? `OK en ${ping.latency_ms}ms` : "Tester ce modèle")}
+                      >
+                        {isPinging ? "⏳" : ping ? ping.ok ? `✅ ${ping.latency_ms}ms` : "❌ KO" : "🏓 Test"}
+                      </button>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => handleOllamaToggle(om)}
+                        disabled={isTogglingThis}
+                        title={active ? `Désactiver ${om.name}` : `Activer ${om.name}`}
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 ${
+                          active ? "bg-purple-500" : "bg-gray-300"
+                        } ${isTogglingThis ? "opacity-50" : ""}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                            active ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Filtres */}

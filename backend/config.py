@@ -22,7 +22,7 @@ class Settings:
 
     # Game
     DEFAULT_PLAYER_COUNT: int = int(os.getenv("DEFAULT_PLAYER_COUNT", "6"))
-    MAX_TOKENS: int = int(os.getenv("MAX_TOKENS_PER_RESPONSE", "150"))
+    MAX_TOKENS: int = int(os.getenv("MAX_TOKENS_PER_RESPONSE", "300"))
     GAME_LANGUAGE: str = os.getenv("GAME_LANGUAGE", "fr")
 
     # Modèles Ollama recommandés (< 7 GB)

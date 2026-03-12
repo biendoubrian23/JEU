@@ -1,4 +1,5 @@
 """Gestion de la base de données SQLite."""
+import math
 import os
 from pathlib import Path
 from sqlalchemy import create_engine
@@ -369,6 +370,13 @@ class Database:
                     "bluff_score_mw": bluff_mw,
                     "caught_at_round_uc": detection_uc,
                     "caught_at_round_mw": detection_mw,
+                    # Intervalles de confiance (Wilson score, 95%)
+                    "ci_low": self._wilson_ci(d["wins"], total)[1],
+                    "ci_high": self._wilson_ci(d["wins"], total)[2],
+                    "ci_uc_low": self._wilson_ci(d["wins_as_undercover"], d["games_as_undercover"])[1] if d["games_as_undercover"] > 0 else None,
+                    "ci_uc_high": self._wilson_ci(d["wins_as_undercover"], d["games_as_undercover"])[2] if d["games_as_undercover"] > 0 else None,
+                    "ci_mw_low": self._wilson_ci(d["wins_as_mr_white"], d["games_as_mr_white"])[1] if d["games_as_mr_white"] > 0 else None,
+                    "ci_mw_high": self._wilson_ci(d["wins_as_mr_white"], d["games_as_mr_white"])[2] if d["games_as_mr_white"] > 0 else None,
                 })
 
             model_results.sort(key=lambda x: x["win_rate"], reverse=True)
@@ -572,3 +580,183 @@ class Database:
                 count += 1
             db.commit()
             return count
+
+    # ── Méthodes utilitaires ────────────────────────────────────────
+
+    @staticmethod
+    def _wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float, float]:
+        """Intervalle de confiance Wilson score (95%) → (center, low, high) en %."""
+        if total == 0:
+            return (0.0, 0.0, 0.0)
+        p = successes / total
+        denom = 1 + z**2 / total
+        center = (p + z**2 / (2 * total)) / denom
+        margin = z * math.sqrt((p * (1 - p) + z**2 / (4 * total)) / total) / denom
+        return (
+            round(center * 100, 1),
+            round(max(0, (center - margin)) * 100, 1),
+            round(min(1, (center + margin)) * 100, 1),
+        )
+
+    # ── Analytics étendues ──────────────────────────────────────────
+
+    def get_extended_analytics(self, session_id: int | None = None) -> dict:
+        """Analytics lourdes: courbes de survie, stats discours, styles, coûts."""
+        with self.get_session() as db:
+            games_q = db.query(Game)
+            if session_id:
+                games_q = games_q.filter(Game.session_id == session_id)
+            games = games_q.all()
+
+            if not games:
+                return {"survival_curves": {}, "discourse_stats": [], "style_typology": [], "cost_data": []}
+
+            game_ids = [g.id for g in games]
+            game_rounds = {g.id: g.rounds_played for g in games}
+            players = db.query(GamePlayer).filter(GamePlayer.game_id.in_(game_ids)).all()
+            events = db.query(GameEvent).filter(
+                GameEvent.game_id.in_(game_ids),
+                GameEvent.event_type == "discussion",
+            ).all()
+
+            # ── Courbes de survie par modèle ──
+            survival_data: dict[str, dict[str, list]] = {}
+            for p in players:
+                mid = p.model_id
+                if mid not in survival_data:
+                    survival_data[mid] = {"uc": [], "mw": []}
+                total_rounds = game_rounds.get(p.game_id, 0)
+                if p.role == "undercover":
+                    survival_data[mid]["uc"].append((p.rounds_survived, total_rounds))
+                elif p.role == "mr_white":
+                    survival_data[mid]["mw"].append((p.rounds_survived, total_rounds))
+
+            survival_curves = {}
+            for mid, roles in survival_data.items():
+                curves = {}
+                for role_key in ("uc", "mw"):
+                    entries = roles[role_key]
+                    if not entries:
+                        continue
+                    max_round = max(tr for _, tr in entries) if entries else 0
+                    curve = []
+                    for r in range(1, max_round + 1):
+                        alive = sum(1 for survived, _ in entries if survived >= r)
+                        curve.append({"round": r, "pct": round(alive / len(entries) * 100, 1)})
+                    curves[role_key] = curve
+                if curves:
+                    survival_curves[mid] = curves
+
+            # ── Stats discours ──
+            disc_by_model: dict[str, list[int]] = {}
+            player_model_map = {(p.game_id, p.player_name): p.model_id for p in players}
+            for evt in events:
+                mid = player_model_map.get((evt.game_id, evt.player_name))
+                if not mid:
+                    continue
+                msg = evt.data.get("message", "") if evt.data else ""
+                if isinstance(msg, str) and msg:
+                    if mid not in disc_by_model:
+                        disc_by_model[mid] = []
+                    disc_by_model[mid].append(len(msg))
+
+            discourse_stats = []
+            for mid, lengths in disc_by_model.items():
+                if lengths:
+                    discourse_stats.append({
+                        "model_id": mid,
+                        "avg_length": round(sum(lengths) / len(lengths), 0),
+                        "total_messages": len(lengths),
+                        "max_length": max(lengths),
+                        "min_length": min(lengths),
+                    })
+            discourse_stats.sort(key=lambda x: x["avg_length"], reverse=True)
+
+            # ── Typologie des styles ──
+            style_keywords = {
+                "manipulateur": ["bluff", "convaincre", "retourner", "manipul", "stratégi", "piège", "feinte", "tromper"],
+                "prudent": ["attention", "méfian", "prudem", "observer", "attendre", "doute", "incertain", "réfléch"],
+                "agressif": ["suspect", "élimin", "accus", "menteur", "coupable", "traître", "imposteur", "danger"],
+                "opportuniste": ["alli", "profit", "moment", "voter avec", "suivre", "consensus", "majorité", "accord"],
+            }
+
+            style_by_model: dict[str, dict[str, int]] = {}
+            for p in players:
+                mid = p.model_id
+                if mid not in style_by_model:
+                    style_by_model[mid] = {s: 0 for s in style_keywords}
+                for entry in (p.reasoning_log or []):
+                    text = str(entry.get("reasoning", "")).lower()
+                    for style, keywords in style_keywords.items():
+                        for kw in keywords:
+                            if kw in text:
+                                style_by_model[mid][style] += 1
+
+            style_typology = []
+            for mid, scores in style_by_model.items():
+                total_score = sum(scores.values())
+                if total_score > 0:
+                    dominant = max(scores, key=scores.get)
+                    style_typology.append({
+                        "model_id": mid,
+                        "dominant_style": dominant,
+                        "scores": {k: round(v / total_score * 100, 1) for k, v in scores.items()},
+                        "raw_counts": scores,
+                    })
+
+            # ── Coût estimé par victoire ──
+            enabled = db.query(EnabledModel).all()
+            cost_map = {}
+            for m in enabled:
+                parsed = self._parse_cost(m.cost)
+                if parsed > 0:
+                    cost_map[m.model_id] = parsed
+
+            cost_data = []
+            model_wins: dict[str, int] = {}
+            model_games_count: dict[str, int] = {}
+            model_rounds_total: dict[str, int] = {}
+            for p in players:
+                mid = p.model_id
+                model_games_count[mid] = model_games_count.get(mid, 0) + 1
+                model_rounds_total[mid] = model_rounds_total.get(mid, 0) + p.rounds_survived
+                if p.won:
+                    model_wins[mid] = model_wins.get(mid, 0) + 1
+
+            for mid, cost_per_m in cost_map.items():
+                total = model_games_count.get(mid, 0)
+                if total == 0:
+                    continue
+                wins = model_wins.get(mid, 0)
+                avg_rounds = model_rounds_total.get(mid, 0) / total
+                # Estimation: ~300 tokens output * 3 phases * avg_rounds par partie
+                tokens_per_game = 300 * 3 * avg_rounds
+                cost_per_game = tokens_per_game / 1_000_000 * cost_per_m
+                total_cost = cost_per_game * total
+                cost_per_win = total_cost / wins if wins > 0 else None
+                cost_data.append({
+                    "model_id": mid,
+                    "cost_per_m": cost_per_m,
+                    "est_cost_per_game": round(cost_per_game, 4),
+                    "est_total_cost": round(total_cost, 4),
+                    "est_cost_per_win": round(cost_per_win, 4) if cost_per_win else None,
+                    "total_games": total,
+                    "wins": wins,
+                })
+            cost_data.sort(key=lambda x: x.get("est_cost_per_win") or 9999)
+
+            return {
+                "survival_curves": survival_curves,
+                "discourse_stats": discourse_stats,
+                "style_typology": style_typology,
+                "cost_data": cost_data,
+            }
+
+    @staticmethod
+    def _parse_cost(cost_str: str) -> float:
+        """Parse '$0.15/M' → 0.15. Retourne 0 si gratuit."""
+        if not cost_str or "gratuit" in cost_str.lower():
+            return 0.0
+        import re
+        m = re.search(r"\$?([\d.]+)", cost_str)
+        return float(m.group(1)) if m else 0.0

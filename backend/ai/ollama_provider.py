@@ -48,6 +48,29 @@ class OllamaProvider(AIProvider):
         except Exception:
             return []
 
+    async def list_models_with_details(self) -> list[dict]:
+        """Liste les modèles installés avec taille et détails."""
+        try:
+            response = await self.client.get(f"{self.base_url}/api/tags")
+            response.raise_for_status()
+            data = response.json()
+            result = []
+            for m in data.get("models", []):
+                size_bytes = m.get("size", 0)
+                size_gb = size_bytes / (1024 ** 3)
+                if size_gb >= 1:
+                    size_str = f"{size_gb:.1f} GB"
+                else:
+                    size_str = f"{size_bytes / (1024 ** 2):.0f} MB"
+                result.append({
+                    "name": m["name"],
+                    "size": size_str,
+                    "size_bytes": size_bytes,
+                })
+            return result
+        except Exception:
+            return []
+
     async def is_available(self) -> bool:
         """Vérifie si Ollama est en cours d'exécution."""
         try:

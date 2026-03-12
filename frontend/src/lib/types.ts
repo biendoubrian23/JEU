@@ -106,6 +106,12 @@ export interface RecommendedModels {
   openrouter_cheap: { description: string; models: ModelInfo[] };
 }
 
+export interface OllamaModelDetail {
+  name: string;
+  size: string;
+  size_bytes: number;
+}
+
 // Modèles catalogue et activés
 export interface CatalogModel {
   model_id: string;

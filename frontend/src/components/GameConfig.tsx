@@ -141,10 +141,19 @@ interface GameConfigProps {
     numGames: number;
     sessionName: string;
   }) => void;
+  onStartExperiment?: (config: {
+    target: PlayerConfig;
+    opponents: PlayerConfig[];
+    gamesAsUc: number;
+    gamesAsMw: number;
+    level: number;
+    sessionName: string;
+  }) => void;
   disabled: boolean;
 }
 
-export default function GameConfig({ onStart, disabled }: GameConfigProps) {
+export default function GameConfig({ onStart, onStartExperiment, disabled }: GameConfigProps) {
+  const [mode, setMode] = useState<"normal" | "experiment">("normal");
   const [players, setPlayers] = useState<PlayerConfig[]>([]);
   const [level, setLevel] = useState(1);
   const [numGames, setNumGames] = useState(5);
@@ -158,9 +167,24 @@ export default function GameConfig({ onStart, disabled }: GameConfigProps) {
   const [pinging, setPinging] = useState(false);
   const [pingResult, setPingResult] = useState<{ alive: number; dead: number } | null>(null);
 
+  // Experiment mode state
+  const [expTarget, setExpTarget] = useState<PlayerConfig>({ name: "Cible", model_id: "", provider: "ollama" });
+  const [expOpponents, setExpOpponents] = useState<PlayerConfig[]>([]);
+  const [expGamesUc, setExpGamesUc] = useState(100);
+  const [expGamesMw, setExpGamesMw] = useState(100);
+  const [expQuickModel, setExpQuickModel] = useState("");
+  const [expQuickProvider, setExpQuickProvider] = useState<"ollama" | "openrouter">("ollama");
+  const [expQuickCount, setExpQuickCount] = useState(5);
+
   const refreshModels = () => {
     getOllamaModels().then((data) => {
-      if (data.models) setOllamaModels(data.models);
+      if (data.models) {
+        // models peut être string[] ou {name, size, size_bytes}[]
+        const names = data.models.map((m: string | { name: string }) =>
+          typeof m === "string" ? m : m.name
+        );
+        setOllamaModels(names);
+      }
     }).catch(() => {});
     getRecommendedModels().then(setRecommended).catch(() => {});
   };
@@ -256,18 +280,55 @@ export default function GameConfig({ onStart, disabled }: GameConfigProps) {
   const allGroups: ModelGroup[] = [...ollamaGroups, ...openrouterGroups];
 
   const canStart = players.length >= 3 && players.every((p) => p.model_id);
+  const canStartExp = expTarget.model_id && expOpponents.length >= 2 && expOpponents.every((p) => p.model_id) && (expGamesUc > 0 || expGamesMw > 0);
+
+  const addExpOpponent = () => {
+    const num = expOpponents.length + 1;
+    setExpOpponents([...expOpponents, { name: `Adversaire-${num}`, model_id: "", provider: "ollama" }]);
+  };
+
+  const expQuickSetup = () => {
+    if (!expQuickModel) return;
+    const shortName = expQuickModel.split("/").pop()?.replace(":free", "") || expQuickModel;
+    const opponents: PlayerConfig[] = [];
+    for (let i = 0; i < expQuickCount; i++) {
+      opponents.push({ name: `${shortName}-${i + 1}`, model_id: expQuickModel, provider: expQuickProvider });
+    }
+    setExpOpponents(opponents);
+  };
 
   return (
     <div className="bg-white rounded-xl border border-arena-border p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">⚙️ Configuration</h2>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
-            {players.length} joueur{players.length > 1 ? "s" : ""}
-          </span>
-          {players.length >= 3 && (
-            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-              {roleDist.civils}C / {roleDist.undercover}U / {roleDist.mr_white}MW
+          {/* Mode toggle */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setMode("normal")}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                mode === "normal" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              🎮 Partie libre
+            </button>
+            <button
+              onClick={() => setMode("experiment")}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                mode === "experiment" ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              🧪 Expérience
+            </button>
+          </div>
+          {mode === "normal" && (
+            <span className="text-xs text-gray-500">
+              {players.length} joueur{players.length > 1 ? "s" : ""}
+              {players.length >= 3 && (
+                <span className="ml-1 bg-gray-100 px-1.5 py-0.5 rounded">
+                  {roleDist.civils}C / {roleDist.undercover}U / {roleDist.mr_white}MW
+                </span>
+              )}
             </span>
           )}
         </div>
@@ -305,154 +366,366 @@ export default function GameConfig({ onStart, disabled }: GameConfigProps) {
         )}
       </div>
 
-      {/* Setup rapide */}
-      <div className="bg-indigo-50 rounded-lg p-4 space-y-3">
-        <h3 className="text-sm font-medium text-indigo-900">⚡ Setup rapide</h3>
-        <div className="flex gap-2">
-          <div className="flex-1 min-w-0">
-            <ModelSelect
-              value={quickSetupModel}
-              onChange={(id, provider) => { setQuickSetupModel(id); setQuickSetupProvider(provider); }}
-              groups={allGroups}
-              placeholder="Choisir un modèle..."
-            />
-          </div>
-          <input
-            type="number"
-            min={3}
-            max={12}
-            value={quickSetupCount}
-            onChange={(e) => setQuickSetupCount(parseInt(e.target.value) || 6)}
-            className="w-16 shrink-0 rounded-lg border border-indigo-200 px-2 py-2 text-sm bg-white text-center"
-            title="Nombre de joueurs"
-            aria-label="Nombre de joueurs"
-          />
-        </div>
-        <button
-          onClick={quickSetup}
-          className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-indigo-700 transition-colors"
-        >
-          Créer
-        </button>
-      </div>
-
-      {/* Liste des joueurs */}
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {players.map((player, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 animate-fade-in"
-          >
-            <input
-              type="text"
-              value={player.name}
-              onChange={(e) => updatePlayer(i, "name", e.target.value)}
-              className="w-28 shrink-0 rounded border border-gray-200 px-2 py-1.5 text-sm"
-              placeholder="Nom"
-            />
-            <div className="flex-1 min-w-0">
-              <ModelSelect
-                value={player.model_id}
-                onChange={(id, provider) => {
-                  const updated = [...players];
-                  const shortName = id.split("/").pop()?.replace(":free", "") || id;
-                  const count = updated.filter((p, j) => j < i && p.model_id === id).length + 1;
-                  updated[i] = { ...updated[i], model_id: id, provider, name: `${shortName}-${count}` };
-                  setPlayers(updated);
-                }}
-                groups={allGroups}
-                placeholder="Choisir un modèle..."
+      {mode === "normal" ? (
+        /* ── MODE NORMAL ── */
+        <>
+          {/* Setup rapide */}
+          <div className="bg-indigo-50 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-medium text-indigo-900">⚡ Setup rapide</h3>
+            <div className="flex gap-2">
+              <div className="flex-1 min-w-0">
+                <ModelSelect
+                  value={quickSetupModel}
+                  onChange={(id, provider) => { setQuickSetupModel(id); setQuickSetupProvider(provider); }}
+                  groups={allGroups}
+                  placeholder="Choisir un modèle..."
+                />
+              </div>
+              <input
+                type="number"
+                min={3}
+                max={12}
+                value={quickSetupCount}
+                onChange={(e) => setQuickSetupCount(parseInt(e.target.value) || 6)}
+                className="w-16 shrink-0 rounded-lg border border-indigo-200 px-2 py-2 text-sm bg-white text-center"
+                title="Nombre de joueurs"
+                aria-label="Nombre de joueurs"
               />
             </div>
             <button
-              onClick={() => removePlayer(i)}
-              className="shrink-0 text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
+              onClick={quickSetup}
+              className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-indigo-700 transition-colors"
             >
-              ✕
+              Créer
             </button>
           </div>
-        ))}
-      </div>
 
-      <button
-        onClick={addPlayer}
-        className="w-full border-2 border-dashed border-gray-300 text-gray-500 rounded-lg py-2 text-sm hover:border-arena-accent hover:text-arena-accent transition-colors"
-      >
-        + Ajouter un joueur
-      </button>
+          {/* Liste des joueurs */}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {players.map((player, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 animate-fade-in"
+              >
+                <input
+                  type="text"
+                  value={player.name}
+                  onChange={(e) => updatePlayer(i, "name", e.target.value)}
+                  className="w-28 shrink-0 rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  placeholder="Nom"
+                />
+                <div className="flex-1 min-w-0">
+                  <ModelSelect
+                    value={player.model_id}
+                    onChange={(id, provider) => {
+                      const updated = [...players];
+                      const shortName = id.split("/").pop()?.replace(":free", "") || id;
+                      const count = updated.filter((p, j) => j < i && p.model_id === id).length + 1;
+                      updated[i] = { ...updated[i], model_id: id, provider, name: `${shortName}-${count}` };
+                      setPlayers(updated);
+                    }}
+                    groups={allGroups}
+                    placeholder="Choisir un modèle..."
+                  />
+                </div>
+                <button
+                  onClick={() => removePlayer(i)}
+                  className="shrink-0 text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
 
-      {/* Paramètres de session */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Niveau</label>
-          <select
-            value={level}
-            onChange={(e) => setLevel(parseInt(e.target.value))}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            title="Niveau de jeu"
-            aria-label="Niveau de jeu"
+          <button
+            onClick={addPlayer}
+            className="w-full border-2 border-dashed border-gray-300 text-gray-500 rounded-lg py-2 text-sm hover:border-arena-accent hover:text-arena-accent transition-colors"
           >
-            <option value={1}>1 - Indépendant</option>
-            <option value={2}>2 - Mémoire</option>
-            <option value={3}>3 - Tendances</option>
-            <option value={4}>4 - Méta-stratégie</option>
-            <option value={5}>5 - Tournoi</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Nb parties</label>
-          <input
-            type="number"
-            min={1}
-            max={200}
-            value={numGames}
-            onChange={(e) => setNumGames(parseInt(e.target.value) || 1)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            title="Nombre de parties"
-            aria-label="Nombre de parties"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Nom session</label>
-          <input
-            type="text"
-            value={sessionName}
-            onChange={(e) => setSessionName(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            title="Nom de la session"
-            placeholder="Nom de la session"
-          />
-        </div>
-      </div>
+            + Ajouter un joueur
+          </button>
 
-      {/* Légende des niveaux */}
-      <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
-        <p><strong>Niv.1</strong> : Parties indépendantes, aucune mémoire entre les jeux</p>
-        <p><strong>Niv.2</strong> : Les IA connaissent les résultats des parties passées</p>
-        <p><strong>Niv.3</strong> : Les IA reçoivent les tendances comportementales des adversaires</p>
-        <p><strong>Niv.4</strong> : Accès complet aux statistics et classements</p>
-        <p><strong>Niv.5</strong> : Mode tournoi avec matchs ciblés</p>
-      </div>
+          {/* Paramètres de session */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Niveau</label>
+              <select
+                value={level}
+                onChange={(e) => setLevel(parseInt(e.target.value))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                title="Niveau de jeu"
+                aria-label="Niveau de jeu"
+              >
+                <option value={1}>1 - Indépendant</option>
+                <option value={2}>2 - Mémoire</option>
+                <option value={3}>3 - Tendances</option>
+                <option value={4}>4 - Méta-stratégie</option>
+                <option value={5}>5 - Tournoi</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nb parties</label>
+              <input
+                type="number"
+                min={1}
+                max={200}
+                value={numGames}
+                onChange={(e) => setNumGames(parseInt(e.target.value) || 1)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                title="Nombre de parties"
+                aria-label="Nombre de parties"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nom session</label>
+              <input
+                type="text"
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                title="Nom de la session"
+                placeholder="Nom de la session"
+              />
+            </div>
+          </div>
 
-      {/* Bouton Start */}
-      <button
-        onClick={() =>
-          onStart({
-            players,
-            level,
-            numGames,
-            sessionName,
-          })
-        }
-        disabled={!canStart || disabled}
-        className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${
-          canStart && !disabled
-            ? "bg-arena-accent text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200"
-            : "bg-gray-200 text-gray-400 cursor-not-allowed"
-        }`}
-      >
-        {disabled ? "⏳ Partie en cours..." : `▶ Lancer ${numGames} partie${numGames > 1 ? "s" : ""}`}
-      </button>
+          {/* Légende des niveaux */}
+          <div className="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 space-y-1">
+            <p><strong>Niv.1</strong> : Parties indépendantes, aucune mémoire entre les jeux</p>
+            <p><strong>Niv.2</strong> : Les IA connaissent les résultats des parties passées</p>
+            <p><strong>Niv.3</strong> : Les IA reçoivent les tendances comportementales des adversaires</p>
+            <p><strong>Niv.4</strong> : Accès complet aux statistics et classements</p>
+            <p><strong>Niv.5</strong> : Mode tournoi avec matchs ciblés</p>
+          </div>
+
+          {/* Bouton Start */}
+          <button
+            onClick={() =>
+              onStart({
+                players,
+                level,
+                numGames,
+                sessionName,
+              })
+            }
+            disabled={!canStart || disabled}
+            className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${
+              canStart && !disabled
+                ? "bg-arena-accent text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {disabled ? "⏳ Partie en cours..." : `▶ Lancer ${numGames} partie${numGames > 1 ? "s" : ""}`}
+          </button>
+        </>
+      ) : (
+        /* ── MODE EXPÉRIENCE ── */
+        <>
+          <div className="bg-purple-50 rounded-lg p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🧪</span>
+              <div>
+                <h3 className="text-sm font-semibold text-purple-900">Mode Expérience</h3>
+                <p className="text-[10px] text-purple-600">
+                  Force un modèle dans un rôle spécifique pour accumuler des statistiques ciblées
+                </p>
+              </div>
+            </div>
+
+            {/* Modèle cible */}
+            <div>
+              <label className="block text-xs font-medium text-purple-800 mb-1">🎯 Modèle cible à étudier</label>
+              <ModelSelect
+                value={expTarget.model_id}
+                onChange={(id, provider) => {
+                  const shortName = id.split("/").pop()?.replace(":free", "") || id;
+                  setExpTarget({ name: `⭐${shortName}`, model_id: id, provider });
+                }}
+                groups={allGroups}
+                placeholder="Choisir le modèle cible..."
+              />
+            </div>
+
+            {/* Nombre de parties par rôle */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-red-700 mb-1">🕵️ Parties en Undercover</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={expGamesUc}
+                  onChange={(e) => setExpGamesUc(parseInt(e.target.value) || 0)}
+                  className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm bg-white"
+                  title="Nombre de parties en tant qu'Undercover"
+                  aria-label="Parties en tant qu'Undercover"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-purple-700 mb-1">👻 Parties en Mr. White</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={expGamesMw}
+                  onChange={(e) => setExpGamesMw(parseInt(e.target.value) || 0)}
+                  className="w-full rounded-lg border border-purple-200 px-3 py-2 text-sm bg-white"
+                  title="Nombre de parties en tant que Mr. White"
+                  aria-label="Parties en tant que Mr. White"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Adversaires */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-700">👥 Adversaires ({expOpponents.length})</h3>
+
+            {/* Setup rapide adversaires */}
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <ModelSelect
+                    value={expQuickModel}
+                    onChange={(id, provider) => { setExpQuickModel(id); setExpQuickProvider(provider); }}
+                    groups={allGroups}
+                    placeholder="Modèle adversaire..."
+                  />
+                </div>
+                <input
+                  type="number"
+                  min={2}
+                  max={12}
+                  value={expQuickCount}
+                  onChange={(e) => setExpQuickCount(parseInt(e.target.value) || 5)}
+                  className="w-16 shrink-0 rounded-lg border border-gray-200 px-2 py-2 text-sm bg-white text-center"
+                  title="Nombre d'adversaires"
+                  aria-label="Nombre d'adversaires"
+                />
+              </div>
+              <button
+                onClick={expQuickSetup}
+                className="w-full bg-gray-600 text-white rounded-lg px-3 py-2 text-xs font-medium hover:bg-gray-700 transition-colors"
+              >
+                Créer adversaires
+              </button>
+            </div>
+
+            {/* Liste adversaires */}
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {expOpponents.map((opp, i) => (
+                <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-2">
+                  <input
+                    type="text"
+                    value={opp.name}
+                    onChange={(e) => {
+                      const updated = [...expOpponents];
+                      updated[i] = { ...updated[i], name: e.target.value };
+                      setExpOpponents(updated);
+                    }}
+                    className="w-28 shrink-0 rounded border border-gray-200 px-2 py-1.5 text-sm"
+                    placeholder="Nom"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <ModelSelect
+                      value={opp.model_id}
+                      onChange={(id, provider) => {
+                        const updated = [...expOpponents];
+                        const shortName = id.split("/").pop()?.replace(":free", "") || id;
+                        const count = updated.filter((p, j) => j < i && p.model_id === id).length + 1;
+                        updated[i] = { ...updated[i], model_id: id, provider, name: `${shortName}-${count}` };
+                        setExpOpponents(updated);
+                      }}
+                      groups={allGroups}
+                      placeholder="Modèle..."
+                    />
+                  </div>
+                  <button
+                    onClick={() => setExpOpponents(expOpponents.filter((_, j) => j !== i))}
+                    className="shrink-0 text-red-400 hover:text-red-600 p-1 hover:bg-red-50 rounded transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={addExpOpponent}
+              className="w-full border-2 border-dashed border-gray-300 text-gray-500 rounded-lg py-1.5 text-xs hover:border-purple-400 hover:text-purple-500 transition-colors"
+            >
+              + Ajouter un adversaire
+            </button>
+          </div>
+
+          {/* Paramètres */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Niveau</label>
+              <select
+                value={level}
+                onChange={(e) => setLevel(parseInt(e.target.value))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                title="Niveau de jeu"
+                aria-label="Niveau de jeu"
+              >
+                <option value={1}>1 - Indépendant</option>
+                <option value={2}>2 - Mémoire</option>
+                <option value={3}>3 - Tendances</option>
+                <option value={4}>4 - Méta-stratégie</option>
+                <option value={5}>5 - Tournoi</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nom session</label>
+              <input
+                type="text"
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                title="Nom de la session"
+                placeholder="Exp. GPT-4o vs Llama"
+              />
+            </div>
+          </div>
+
+          {/* Résumé */}
+          {expTarget.model_id && (
+            <div className="bg-indigo-50 rounded-lg p-3 text-xs text-indigo-800">
+              <p className="font-medium">📋 Résumé de l&apos;expérience :</p>
+              <p className="mt-1">
+                <strong>{expTarget.model_id.split("/").pop()}</strong> jouera{" "}
+                {expGamesUc > 0 && <span className="text-red-700">{expGamesUc}× en Undercover</span>}
+                {expGamesUc > 0 && expGamesMw > 0 && " + "}
+                {expGamesMw > 0 && <span className="text-purple-700">{expGamesMw}× en Mr. White</span>}
+                {" "}contre {expOpponents.length} adversaire{expOpponents.length > 1 ? "s" : ""}
+                {" "}= <strong>{expGamesUc + expGamesMw} parties</strong> au total.
+              </p>
+            </div>
+          )}
+
+          {/* Bouton Start Expérience */}
+          <button
+            onClick={() =>
+              onStartExperiment?.({
+                target: expTarget,
+                opponents: expOpponents,
+                gamesAsUc: expGamesUc,
+                gamesAsMw: expGamesMw,
+                level,
+                sessionName,
+              })
+            }
+            disabled={!canStartExp || disabled}
+            className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${
+              canStartExp && !disabled
+                ? "bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-200"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            {disabled ? "⏳ Expérience en cours..." : `🧪 Lancer l'expérience (${expGamesUc + expGamesMw} parties)`}
+          </button>
+        </>
+      )}
     </div>
   );
 }
