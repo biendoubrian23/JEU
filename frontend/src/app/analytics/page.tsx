@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, ReactNode } from "react";
+import { LayoutGroup, motion } from "framer-motion";
 import { getAnalytics, getExtendedAnalytics, getSessions } from "@/lib/api";
 import {
   BarChart,
@@ -182,6 +183,37 @@ function ChartSection({
   );
 }
 
+type ModelSortKey = "weighted" | "civil" | "undercover" | "mr_white" | "vote_accuracy" | "avg_survival";
+
+const SORT_OPTIONS: { key: ModelSortKey; label: string }[] = [
+  { key: "weighted", label: "Win Rate Pondéré" },
+  { key: "civil", label: "% Civil" },
+  { key: "undercover", label: "% Undercover" },
+  { key: "mr_white", label: "% Mr. White" },
+  { key: "vote_accuracy", label: "Vote Accuracy" },
+  { key: "avg_survival", label: "Tours moy. survie" },
+];
+
+// Coefficients de pondération pour le Win Rate Global
+// Mr. White est le rôle le plus difficile → coeff le plus élevé
+// Undercover plus difficile que Civil
+const WEIGHT_CIVIL = 1.0;
+const WEIGHT_UNDERCOVER = 1.5;
+const WEIGHT_MR_WHITE = 2.0;
+
+function computeWeightedWinRate(m: ModelData): number {
+  const totalWeighted =
+    m.wins_as_civil * WEIGHT_CIVIL +
+    m.wins_as_undercover * WEIGHT_UNDERCOVER +
+    m.wins_as_mr_white * WEIGHT_MR_WHITE;
+  const totalGamesWeighted =
+    m.games_as_civil * WEIGHT_CIVIL +
+    m.games_as_undercover * WEIGHT_UNDERCOVER +
+    m.games_as_mr_white * WEIGHT_MR_WHITE;
+  if (totalGamesWeighted === 0) return 0;
+  return Math.round((totalWeighted / totalGamesWeighted) * 1000) / 10;
+}
+
 export default function AnalyticsPage() {
   const [models, setModels] = useState<ModelData[]>([]);
   const [globalStats, setGlobalStats] = useState<GlobalData | null>(null);
@@ -191,6 +223,30 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [expandedGame, setExpandedGame] = useState<string | null>(null);
   const [extended, setExtended] = useState<ExtendedData | null>(null);
+  const [modelSort, setModelSort] = useState<ModelSortKey>("weighted");
+
+  const sortedModels = useMemo(() => {
+    const sorted = [...models];
+    sorted.sort((a, b) => {
+      switch (modelSort) {
+        case "weighted":
+          return computeWeightedWinRate(b) - computeWeightedWinRate(a);
+        case "civil":
+          return (b.civil_wr ?? 0) - (a.civil_wr ?? 0);
+        case "undercover":
+          return (b.undercover_wr ?? 0) - (a.undercover_wr ?? 0);
+        case "mr_white":
+          return (b.mr_white_wr ?? 0) - (a.mr_white_wr ?? 0);
+        case "vote_accuracy":
+          return b.vote_accuracy - a.vote_accuracy;
+        case "avg_survival":
+          return b.avg_survival - a.avg_survival;
+        default:
+          return 0;
+      }
+    });
+    return sorted;
+  }, [models, modelSort]);
 
   const loadData = async (sessionId?: number | null) => {
     setLoading(true);
@@ -521,12 +577,37 @@ export default function AnalyticsPage() {
       {/* ══════════════ Fiche de Performance par Modèle ══════════════ */}
       {models.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">📋 Fiche de Performance par Modèle</h3>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">📋 Fiche de Performance par Modèle</h3>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setModelSort(opt.key)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${
+                    modelSort === opt.key
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <LayoutGroup>
           <div className="space-y-4">
-            {models.map((m) => {
+            {sortedModels.map((m) => {
               const totalGames = m.games_as_civil + m.games_as_undercover + m.games_as_mr_white;
+              const weightedWR = computeWeightedWinRate(m);
               return (
-                <div key={m.model_id} className="border border-gray-100 rounded-xl overflow-hidden">
+                <motion.div
+                  key={m.model_id}
+                  layout
+                  layoutId={m.model_id}
+                  transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}
+                  className="border border-gray-100 rounded-xl overflow-hidden"
+                >
                   {/* Model header */}
                   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -538,8 +619,8 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-center">
-                        <p className={`text-xl font-bold ${m.win_rate >= 50 ? "text-emerald-600" : "text-red-500"}`}>{m.win_rate}%</p>
-                        <p className="text-[10px] text-gray-400">Win Rate Global</p>
+                        <p className={`text-xl font-bold ${weightedWR >= 50 ? "text-emerald-600" : "text-red-500"}`}>{weightedWR}%</p>
+                        <p className="text-[10px] text-gray-400">Win Rate Pondéré</p>
                       </div>
                       <div className="text-center">
                         <p className="text-lg font-bold text-amber-600">{m.vote_accuracy}%</p>
@@ -684,10 +765,11 @@ export default function AnalyticsPage() {
                       {m.wins_as_mr_white > 0 && <span className="text-purple-600">● MW {m.wins_as_mr_white}V</span>}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
+          </LayoutGroup>
         </div>
       )}
 

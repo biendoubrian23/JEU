@@ -183,6 +183,54 @@ class Database:
                 for g in games
             ]
 
+    def get_games_paginated(self, page: int = 1, per_page: int = 30) -> dict:
+        """Retourne les parties paginées avec compteur total, triées par date (plus anciennes = n°1)."""
+        with self.get_session() as db:
+            total = db.query(Game).count()
+            offset = (page - 1) * per_page
+            games = (
+                db.query(Game)
+                .order_by(Game.created_at.asc())
+                .offset(offset)
+                .limit(per_page)
+                .all()
+            )
+            return {
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "games": [
+                    {
+                        "id": g.id,
+                        "game_id": g.game_id,
+                        "game_number": offset + idx + 1,
+                        "level": g.level,
+                        "winner": g.winner,
+                        "civil_word": g.civil_word,
+                        "undercover_word": g.undercover_word,
+                        "rounds_played": g.rounds_played,
+                        "duration_seconds": round(g.duration_seconds, 1),
+                        "player_count": g.player_count,
+                        "created_at": g.created_at.isoformat() if g.created_at else None,
+                    }
+                    for idx, g in enumerate(games)
+                ],
+            }
+
+    def get_game_by_number(self, number: int) -> dict | None:
+        """Retourne le détail d'une partie par son numéro séquentiel (1-based)."""
+        with self.get_session() as db:
+            game = (
+                db.query(Game)
+                .order_by(Game.created_at.asc())
+                .offset(number - 1)
+                .limit(1)
+                .first()
+            )
+            if not game:
+                return None
+            return self.get_game_detail(game.game_id)
+
     def get_game_detail(self, game_id_str: str) -> dict | None:
         """Retourne le détail complet d'une partie."""
         with self.get_session() as db:

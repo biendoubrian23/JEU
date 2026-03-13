@@ -35,23 +35,27 @@ CONTRAINTES DE COMMUNICATION :
 
 def role_prompt(role: str, word: str | None, player_name: str) -> str:
     """Prompt spécifique au rôle du joueur."""
-    if role == "civil":
+    if role in ("civil", "undercover"):
         return f"""Tu es {player_name}.
-Ton rôle secret : CIVIL.
 Ton mot secret : "{word}".
-Donne des indices liés à ton mot sans le révéler directement. Essaie d'identifier qui n'a pas le même mot que toi."""
 
-    elif role == "undercover":
-        return f"""Tu es {player_name}.
-Ton rôle secret : UNDERCOVER.
-Ton mot secret : "{word}".
-Ton mot est DIFFÉRENT de celui des Civils mais proche. Donne des indices assez vagues pour te fondre dans le groupe sans te faire repérer."""
+Dans ce jeu, tu ne sais pas avec certitude si tu es Civil ou Undercover.
+Les Civils partagent tous le même mot. L'Undercover a un mot proche mais différent.
+Écoute attentivement les indices des autres joueurs.
+Si leurs indices semblent ne pas correspondre exactement à ton mot, adapte-toi pour rester cohérent avec la majorité.
+Ton objectif : ne pas être éliminé."""
 
     elif role == "mr_white":
         return f"""Tu es {player_name}.
 Ton rôle secret : MR. WHITE.
-Tu n'as AUCUN mot. Tu dois bluffer en écoutant les indices des autres et en donnant des mots crédibles.
-Si tu es éliminé, tu auras une chance de deviner le mot des Civils pour gagner."""
+Tu n'as reçu AUCUN mot.
+
+Les Civils sont majoritaires et partagent tous le même mot. L'Undercover a un mot proche mais différent.
+Si les autres joueurs te repèrent, ils voteront pour t'éliminer.
+
+Ton objectif : survivre jusqu'à ce qu'il ne reste que 2 joueurs pour gagner.
+Écoute attentivement les indices donnés par les autres pour déduire le thème commun, et donne des indices crédibles qui s'intègrent naturellement.
+Si tu es éliminé, tu auras UNE chance de deviner le mot des Civils pour gagner seul."""
 
     return ""
 
@@ -76,6 +80,7 @@ def discussion_prompt(
     clues_this_round: list[dict],
     previous_eliminations: list[dict],
     all_clues_history: list[dict] | None = None,
+    player_name: str = "",
 ) -> str:
     """Prompt pour la phase de discussion."""
     clues_text = "\n".join([f"- {c['player']}: \"{c['word']}\"" for c in clues_this_round])
@@ -99,12 +104,14 @@ Indices de ce tour :
 {clues_text}
 {elim_text}
 Donne ton avis en 1-3 phrases. Qui te semble suspect et pourquoi ?
+RAPPEL IMPORTANT : Tu es {player_name}. Quand tu vois le nom "{player_name}" dans la liste des indices ou des messages, c'est TOI. Ne parle pas de toi à la 3ème personne. Ne te suspecte pas toi-même. Ne vote jamais contre toi-même.
 Réponds en JSON : {{"message": "ton message court", "reasoning": "ta réflexion privée"}}"""
 
 
 def rebuttal_prompt(
     round_num: int,
     first_round_messages: list[dict],
+    player_name: str = "",
 ) -> str:
     """Prompt pour le 2e tour de discussion (réplique / défense)."""
     msgs_text = "\n".join([f"- {m['player']}: {m['message']}" for m in first_round_messages])
@@ -114,6 +121,7 @@ Voici ce que les joueurs ont dit au premier tour de discussion :
 {msgs_text}
 
 C'est ton tour de répondre. Tu peux te défendre si tu as été accusé, contre-attaquer, soutenir une accusation, ou changer d'avis.
+RAPPEL IMPORTANT : Tu es {player_name}. Quand tu vois le nom "{player_name}" dans les messages, c'est TOI. Ne parle pas de toi à la 3ème personne.
 Réponds en 1-3 phrases.
 Réponds en JSON : {{"message": "ta réplique", "reasoning": "ta réflexion privée"}}"""
 
@@ -152,7 +160,8 @@ def vote_prompt(
     return f"""Tour {round_num} - Phase de vote.
 {history_text}{clues_text}{discussion_text}
 Joueurs en vie (sauf toi) : {players_list}
-En te basant sur les indices ET la discussion, vote pour éliminer UN joueur. Tu ne peux PAS voter pour toi-même.
+RAPPEL IMPORTANT : Tu es {player_name}. Tu ne peux PAS voter pour toi-même ({player_name}). Vote UNIQUEMENT pour un des joueurs suivants : {players_list}.
+En te basant sur les indices ET la discussion, vote pour éliminer UN joueur.
 Réponds en JSON : {{"vote": "nom_du_joueur", "reasoning": "pourquoi tu votes pour cette personne (privé)"}}"""
 
 

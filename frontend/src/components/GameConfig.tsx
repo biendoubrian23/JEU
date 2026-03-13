@@ -249,6 +249,11 @@ export default function GameConfig({ onStart, onStartExperiment, disabled }: Gam
       provider: "openrouter" as const,
       label: `☁️ ${m.name} (${m.cost})`,
     })),
+    ...(recommended?.openrouter_premium?.models || []).map((m) => ({
+      id: m.id,
+      provider: "openrouter" as const,
+      label: `☁️ ${m.name} (${m.cost})`,
+    })),
   ];
 
   const ollamaGroup: ModelGroup = {
@@ -275,8 +280,16 @@ export default function GameConfig({ onStart, onStartExperiment, disabled }: Gam
     })),
   };
 
+  const premiumGroup: ModelGroup = {
+    label: "💎 OpenRouter — Premium",
+    models: (recommended?.openrouter_premium?.models || []).map((m) => ({
+      id: m.id, provider: "openrouter" as const, label: m.name,
+      badge: m.cost, badgeColor: "bg-red-100 text-red-700",
+    })),
+  };
+
   const ollamaGroups: ModelGroup[] = [ollamaGroup].filter((g) => g.models.length > 0);
-  const openrouterGroups: ModelGroup[] = [freeGroup, cheapGroup].filter((g) => g.models.length > 0);
+  const openrouterGroups: ModelGroup[] = [freeGroup, cheapGroup, premiumGroup].filter((g) => g.models.length > 0);
   const allGroups: ModelGroup[] = [...ollamaGroups, ...openrouterGroups];
 
   const canStart = players.length >= 3 && players.every((p) => p.model_id);

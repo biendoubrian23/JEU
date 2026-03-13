@@ -14,10 +14,10 @@ import type { CatalogModel, EnabledModel, OllamaModelDetail } from "@/lib/types"
 
 type PingResult = { ok: boolean; latency_ms: number; error: string };
 
-type Category = "all" | "free" | "cheap";
+type Category = "all" | "free" | "cheap" | "premium";
 
 export default function ModelsPage() {
-  const [catalog, setCatalog] = useState<{ free: CatalogModel[]; cheap: CatalogModel[] }>({ free: [], cheap: [] });
+  const [catalog, setCatalog] = useState<{ free: CatalogModel[]; cheap: CatalogModel[]; premium: CatalogModel[] }>({ free: [], cheap: [], premium: [] });
   const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -54,7 +54,8 @@ export default function ModelsPage() {
   const allModels = useMemo(() => {
     const free = (catalog.free || []).map((m) => ({ ...m, category: "free" as const }));
     const cheap = (catalog.cheap || []).map((m) => ({ ...m, category: "cheap" as const }));
-    return [...free, ...cheap];
+    const premium = (catalog.premium || []).map((m) => ({ ...m, category: "premium" as const }));
+    return [...free, ...cheap, ...premium];
   }, [catalog]);
 
   const filtered = useMemo(() => {
@@ -75,6 +76,7 @@ export default function ModelsPage() {
   const stats = useMemo(() => {
     const enabledFree = allModels.filter((m) => m.category === "free" && enabledIds.has(m.model_id)).length;
     const enabledCheap = allModels.filter((m) => m.category === "cheap" && enabledIds.has(m.model_id)).length;
+    const enabledPremium = allModels.filter((m) => m.category === "premium" && enabledIds.has(m.model_id)).length;
     const anyOllamaInDB = ollamaModels.some((m) => enabledIds.has(m.name));
     const enabledLocal = anyOllamaInDB
       ? ollamaModels.filter((m) => enabledIds.has(m.name)).length
@@ -82,11 +84,13 @@ export default function ModelsPage() {
     return {
       totalFree: catalog.free?.length || 0,
       totalCheap: catalog.cheap?.length || 0,
+      totalPremium: catalog.premium?.length || 0,
       totalLocal: ollamaModels.length,
       enabledFree,
       enabledCheap,
+      enabledPremium,
       enabledLocal,
-      total: enabledFree + enabledCheap + enabledLocal,
+      total: enabledFree + enabledCheap + enabledPremium + enabledLocal,
     };
   }, [allModels, enabledIds, catalog, ollamaModels]);
 
@@ -119,7 +123,7 @@ export default function ModelsPage() {
     setToggling(null);
   };
 
-  const enableAll = async (cat: "free" | "cheap") => {
+  const enableAll = async (cat: "free" | "cheap" | "premium") => {
     const models = allModels.filter((m) => m.category === cat && !enabledIds.has(m.model_id));
     for (const model of models) {
       await addEnabledModel({
@@ -139,7 +143,7 @@ export default function ModelsPage() {
     });
   };
 
-  const disableAll = async (cat: "free" | "cheap") => {
+  const disableAll = async (cat: "free" | "cheap" | "premium") => {
     const models = allModels.filter((m) => m.category === cat && enabledIds.has(m.model_id));
     for (const model of models) {
       await removeEnabledModel(model.model_id);
@@ -228,11 +232,11 @@ export default function ModelsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <div className="bg-white rounded-xl border border-arena-border p-4">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Modèles activés</div>
           <div className="mt-1 text-2xl font-bold text-arena-accent">{stats.total}</div>
-          <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalFree + stats.totalCheap + stats.totalLocal} disponibles</div>
+          <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalFree + stats.totalCheap + stats.totalPremium + stats.totalLocal} disponibles</div>
         </div>
         <div className="bg-white rounded-xl border border-arena-border p-4">
           <div className="flex items-center justify-between">
@@ -266,6 +270,17 @@ export default function ModelsPage() {
           </div>
           <div className="mt-1 text-2xl font-bold text-blue-600">{stats.enabledCheap}</div>
           <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalCheap} payants économiques</div>
+        </div>
+        <div className="bg-white rounded-xl border border-arena-border p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">Premium</div>
+            <div className="flex gap-1">
+              <button onClick={() => enableAll("premium")} className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors">Tout</button>
+              <button onClick={() => disableAll("premium")} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">Aucun</button>
+            </div>
+          </div>
+          <div className="mt-1 text-2xl font-bold text-amber-600">{stats.enabledPremium}</div>
+          <div className="text-xs text-gray-400 mt-0.5">sur {stats.totalPremium} premium haut de gamme</div>
         </div>
       </div>
 
@@ -415,7 +430,7 @@ export default function ModelsPage() {
           />
         </div>
         <div className="flex rounded-lg border border-arena-border overflow-hidden">
-          {(["all", "free", "cheap"] as Category[]).map((cat) => (
+          {(["all", "free", "cheap", "premium"] as Category[]).map((cat) => (
             <button
               key={cat}
               onClick={() => setCategory(cat)}
@@ -425,7 +440,7 @@ export default function ModelsPage() {
                   : "bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {cat === "all" ? "Tous" : cat === "free" ? "Gratuits" : "Économiques"}
+              {cat === "all" ? "Tous" : cat === "free" ? "Gratuits" : cat === "cheap" ? "Économiques" : "Premium"}
             </button>
           ))}
         </div>
@@ -463,13 +478,13 @@ export default function ModelsPage() {
         </div>
 
         <div className="divide-y divide-gray-100 max-h-[calc(100vh-480px)] overflow-y-auto">
-          {filtered.map((model) => {
+          {filtered.map((model, index) => {
             const isEnabled = enabledIds.has(model.model_id);
             const isToggling = toggling === model.model_id;
 
             return (
               <div
-                key={model.model_id}
+                key={`${model.category}-${model.model_id}`}
                 className={`grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_120px_100px_100px_110px_80px] gap-4 px-4 py-3 items-center transition-colors ${
                   isEnabled ? "bg-white" : "bg-gray-50/50"
                 } hover:bg-arena-accent/5`}
@@ -479,7 +494,7 @@ export default function ModelsPage() {
                   <div className="flex items-center gap-2">
                     <span
                       className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
-                        model.category === "free" ? "bg-green-400" : "bg-blue-400"
+                        model.category === "free" ? "bg-green-400" : model.category === "premium" ? "bg-amber-400" : "bg-blue-400"
                       }`}
                     />
                     <span className={`text-sm font-medium truncate ${isEnabled ? "text-gray-900" : "text-gray-400"}`}>
@@ -511,6 +526,8 @@ export default function ModelsPage() {
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
                       model.category === "free"
                         ? "bg-green-50 text-green-700"
+                        : model.category === "premium"
+                        ? "bg-amber-50 text-amber-700"
                         : "bg-blue-50 text-blue-700"
                     }`}
                   >

@@ -251,3 +251,18 @@ export function createWebSocket(onMessage: (data: any) => void): WebSocket {
 
   return ws;
 }
+
+// ============================================================
+// Historique des parties
+// ============================================================
+
+export async function getGamesPaginated(page: number = 1, perPage: number = 30) {
+  const res = await fetch(`${API_BASE}/api/games/paginated?page=${page}&per_page=${perPage}`);
+  return res.json();
+}
+
+export async function getGameByNumber(number: number) {
+  const res = await fetch(`${API_BASE}/api/games/by-number/${number}`);
+  if (!res.ok) throw new Error("Partie non trouvée");
+  return res.json();
+}

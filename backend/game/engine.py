@@ -366,6 +366,7 @@ class UndercoverEngine:
                 round_clues,
                 state.eliminated,
                 all_clues_history=clues_history if clues_history else None,
+                player_name=player.name,
             )
 
             # Ajouter les messages déjà émis dans ce 1er tour
@@ -414,6 +415,7 @@ class UndercoverEngine:
             prompt = rebuttal_prompt(
                 state.current_round,
                 first_round_messages,
+                player_name=player.name,
             )
 
             # Ajouter les répliques déjà émises

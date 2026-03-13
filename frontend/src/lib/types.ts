@@ -104,6 +104,7 @@ export interface RecommendedModels {
   ollama: { description: string; models: ModelInfo[] };
   openrouter_free: { description: string; models: ModelInfo[] };
   openrouter_cheap: { description: string; models: ModelInfo[] };
+  openrouter_premium: { description: string; models: ModelInfo[] };
 }
 
 export interface OllamaModelDetail {
@@ -124,6 +125,7 @@ export interface CatalogModel {
 export interface ModelCatalog {
   free: CatalogModel[];
   cheap: CatalogModel[];
+  premium: CatalogModel[];
 }
 
 export interface EnabledModel {

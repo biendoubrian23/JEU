@@ -572,6 +572,23 @@ async def list_games(limit: int = 50, session_id: int | None = None):
     return db.get_games_list(limit=limit, session_id=session_id)
 
 
+@app.get("/api/games/paginated")
+async def list_games_paginated(page: int = 1, per_page: int = 30):
+    """Liste les parties paginées avec compteur total."""
+    return db.get_games_paginated(page=page, per_page=per_page)
+
+
+@app.get("/api/games/by-number/{number}")
+async def get_game_by_number(number: int):
+    """Récupère une partie par son numéro séquentiel (1-based)."""
+    if number < 1:
+        raise HTTPException(status_code=400, detail="Le numéro doit être >= 1")
+    detail = db.get_game_by_number(number)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Partie non trouvée")
+    return detail
+
+
 @app.get("/api/sessions")
 async def list_sessions():
     """Liste les sessions de jeu."""
@@ -693,6 +710,33 @@ OPENROUTER_CATALOG = {
         {"model_id": "amazon/nova-micro-v1", "name": "Nova Micro (Amazon)", "cost": "$0.04/M", "context_length": 128000, "params_info": ""},
         {"model_id": "amazon/nova-lite-v1", "name": "Nova Lite (Amazon)", "cost": "$0.06/M", "context_length": 300000, "params_info": ""},
         {"model_id": "meta-llama/llama-3.1-8b-instruct", "name": "Llama 3.1 8B (Meta)", "cost": "$0.02/M", "context_length": 16384, "params_info": "8B"},
+        {"model_id": "bytedance-seed/seed-2.0-mini", "name": "Seed 2.0 Mini (ByteDance)", "cost": "$0.10/M", "context_length": 262144, "params_info": ""},
+        {"model_id": "qwen/qwen3.5-27b", "name": "Qwen3.5 27B (Alibaba)", "cost": "$0.20/M", "context_length": 262144, "params_info": "27B"},
+        {"model_id": "qwen/qwen3.5-35b-a3b", "name": "Qwen3.5 35B-A3B (Alibaba)", "cost": "$0.18/M", "context_length": 262144, "params_info": "35B MoE (3B actifs)"},
+        {"model_id": "qwen/qwen3.5-122b-a10b", "name": "Qwen3.5 122B-A10B (Alibaba)", "cost": "$0.35/M", "context_length": 262144, "params_info": "122B MoE (10B actifs)"},
+        {"model_id": "google/gemini-3.1-flash-lite-preview", "name": "Gemini 3.1 Flash Lite Preview (Google)", "cost": "$0.25/M", "context_length": 1048576, "params_info": ""},
+        {"model_id": "openai/gpt-5.2", "name": "GPT-5.2 (OpenAI)", "cost": "$1.50/M", "context_length": 400000, "params_info": ""},
+        {"model_id": "openai/gpt-5.3-chat", "name": "GPT-5.3 Chat (OpenAI)", "cost": "$1.75/M", "context_length": 128000, "params_info": ""},
+        {"model_id": "mistralai/mistral-small-3.2-24b-instruct", "name": "Mistral Small 3.2 24B (Mistral)", "cost": "$0.10/M", "context_length": 128000, "params_info": "24B"},
+    ],
+    "premium": [
+        # --- OpenAI ---
+        {"model_id": "openai/gpt-5.4", "name": "GPT-5.4 (OpenAI)", "cost": "$2.50/M in · $15/M out", "context_length": 1000000, "params_info": ""},
+        {"model_id": "openai/gpt-5.4-pro", "name": "GPT-5.4 Pro (OpenAI)", "cost": "$30/M in · $18/M out", "context_length": 1000000, "params_info": ""},
+        # --- Anthropic ---
+        {"model_id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6 (Anthropic)", "cost": "$3/M in · $15/M out", "context_length": 1000000, "params_info": ""},
+        {"model_id": "anthropic/claude-opus-4.6", "name": "Claude Opus 4.6 (Anthropic)", "cost": "$5/M in · $25/M out", "context_length": 1000000, "params_info": ""},
+
+        # --- Google ---
+        {"model_id": "google/gemini-2.5-pro", "name": "Gemini 2.5 Pro (Google)", "cost": "$1.25/M in · $10/M out", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-3-flash-preview", "name": "Gemini 3 Flash Preview (Google)", "cost": "$0.15/M in · $0.60/M out", "context_length": 1048576, "params_info": ""},
+        {"model_id": "google/gemini-3.1-flash-preview", "name": "Gemini 3.1 Flash Preview (Google)", "cost": "$0.50/M in · $1.50/M out", "context_length": 1048576, "params_info": ""},
+        # --- xAI ---
+        {"model_id": "x-ai/grok-4.20-beta", "name": "Grok 4.20 Beta (xAI)", "cost": "$2/M in · $8/M out", "context_length": 2000000, "params_info": ""},
+        {"model_id": "x-ai/grok-4.20-multi-agent-beta", "name": "Grok 4.20 Multi-Agent (xAI)", "cost": "$2/M in · $8/M out", "context_length": 2000000, "params_info": ""},
+        # --- Autres ---
+        {"model_id": "inception/mercury-2", "name": "Mercury 2 (Inception)", "cost": "$0.75/M in · $0.75/M out", "context_length": 128000, "params_info": ""},
+        {"model_id": "deepseek/deepseek-r1", "name": "DeepSeek R1 (DeepSeek)", "cost": "$0.55/M in · $2.19/M out", "context_length": 163840, "params_info": "685B MoE · reasoning"},
     ],
 }
 
@@ -757,6 +801,7 @@ async def get_recommended_models():
 
     free_models = [m for m in enabled if m["category"] == "free"]
     cheap_models = [m for m in enabled if m["category"] == "cheap"]
+    premium_models = [m for m in enabled if m["category"] == "premium"]
 
     # Filtrer par les résultats du ping si disponibles
     def _is_alive(model_id: str) -> bool:
@@ -791,6 +836,13 @@ async def get_recommended_models():
             "models": [
                 {"id": m["model_id"], "name": m["name"], "cost": m["cost"]}
                 for m in cheap_models if _is_alive(m["model_id"])
+            ],
+        },
+        "openrouter_premium": {
+            "description": "Modèles premium haut de gamme",
+            "models": [
+                {"id": m["model_id"], "name": m["name"], "cost": m["cost"]}
+                for m in premium_models if _is_alive(m["model_id"])
             ],
         },
     }
