@@ -28,9 +28,11 @@ CONDITIONS DE VICTOIRE :
 
 CONTRAINTES DE COMMUNICATION :
 - Tes réponses doivent être COURTES : 1 à 3 phrases maximum.
-- Ne révèle JAMAIS ton mot secret directement.
+- Ne révèle JAMAIS ton mot secret directement, ni comme indice, ni dans la discussion. Le but est de prouver que tu connais le mot SANS jamais le prononcer.
 - Ne révèle JAMAIS ton rôle sauf si c'est stratégique.
-- Parle naturellement, comme dans une conversation entre amis."""
+- Parle naturellement, comme dans une conversation entre amis.
+- Ne critique JAMAIS tes propres indices en public. Si quelqu'un attaque ton indice, défends-le et justifie-le avec assurance. Redirige les soupçons vers un autre joueur. Tu peux douter de toi dans ta réflexion privée (reasoning), mais JAMAIS dans ton message public.
+- Si un joueur donne un indice qui SEMBLE être le mot secret lui-même, c'est très suspect — signale-le."""
 
 
 def role_prompt(role: str, word: str | None, player_name: str) -> str:
@@ -71,7 +73,10 @@ def clue_prompt(round_num: int, previous_clues: list[dict]) -> str:
     return f"""Tour {round_num} - Phase d'indices.
 {context}
 C'est ton tour. Donne UN SEUL MOT comme indice lié à ton mot secret.
-IMPORTANT : Tu ne dois PAS répéter un mot déjà donné par toi ou par un autre joueur. Chaque indice doit être un mot DIFFÉRENT de tous les indices précédents.
+INTERDICTIONS :
+- Tu ne dois JAMAIS donner ton mot secret lui-même comme indice. L'indice doit être un mot DIFFÉRENT qui y fait penser.
+- Tu ne dois PAS répéter un mot déjà donné par toi ou par un autre joueur.
+- Chaque indice doit être un mot DIFFÉRENT de tous les indices précédents.
 Réponds UNIQUEMENT en JSON : {{"clue": "ton_mot", "reasoning": "explication courte de ton choix (privé, les autres ne verront pas)"}}"""
 
 
@@ -105,7 +110,11 @@ Indices de ce tour :
 {elim_text}
 Donne ton avis en 1-3 phrases. Qui te semble suspect et pourquoi ?
 RAPPEL IMPORTANT : Tu es {player_name}. Quand tu vois le nom "{player_name}" dans la liste des indices ou des messages, c'est TOI. Ne parle pas de toi à la 3ème personne. Ne te suspecte pas toi-même. Ne vote jamais contre toi-même.
-Réponds en JSON : {{"message": "ton message court", "reasoning": "ta réflexion privée"}}"""
+INTERDICTIONS ABSOLUES :
+- Ne prononce JAMAIS ton mot secret dans la discussion. Le but du jeu est de montrer que tu connais le mot SANS le dire. Si quelqu'un dit le mot en clair, c'est extrêmement suspect.
+- Ne dis JAMAIS publiquement que ton propre indice était faible, vague ou mauvais. Si on critique ton indice, défends-le avec conviction et retourne les soupçons vers quelqu'un d'autre.
+- Tes doutes personnels vont UNIQUEMENT dans le champ "reasoning" que personne ne verra.
+Réponds en JSON : {{"message": "ton message public (ne JAMAIS dire ton mot secret, TOUJOURS défendre tes indices)", "reasoning": "ta réflexion privée honnête (personne ne la verra)"}}"""
 
 
 def rebuttal_prompt(
@@ -122,8 +131,12 @@ Voici ce que les joueurs ont dit au premier tour de discussion :
 
 C'est ton tour de répondre. Tu peux te défendre si tu as été accusé, contre-attaquer, soutenir une accusation, ou changer d'avis.
 RAPPEL IMPORTANT : Tu es {player_name}. Quand tu vois le nom "{player_name}" dans les messages, c'est TOI. Ne parle pas de toi à la 3ème personne.
+INTERDICTIONS ABSOLUES :
+- Ne prononce JAMAIS ton mot secret dans ta réplique. Le but est de montrer que tu le connais SANS le dire.
+- Ne critique JAMAIS tes propres indices en public. Si on t'attaque, défends-toi avec assurance et redirige les soupçons.
+- Tes vrais doutes vont UNIQUEMENT dans "reasoning".
 Réponds en 1-3 phrases.
-Réponds en JSON : {{"message": "ta réplique", "reasoning": "ta réflexion privée"}}"""
+Réponds en JSON : {{"message": "ta réplique publique (ne JAMAIS dire ton mot secret, TOUJOURS te défendre)", "reasoning": "ta réflexion privée honnête (personne ne la verra)"}}"""
 
 
 def vote_prompt(

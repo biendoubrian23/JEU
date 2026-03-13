@@ -308,6 +308,22 @@ class UndercoverEngine:
                 if isinstance(clue_word, str):
                     clue_word = clue_word.strip().split()[0] if clue_word.strip() else "..."
 
+                # Bloquer si l'indice est le mot secret du joueur (ou l'autre mot de la paire)
+                if isinstance(clue_word, str) and player.word:
+                    forbidden = {state.civil_word.lower(), state.undercover_word.lower()}
+                    if clue_word.lower() in forbidden:
+                        print(f"  [!] {player.name}: indice interdit '{clue_word}' (= mot secret). Re-demande...")
+                        retry_prompt = prompt + f"\n\nATTENTION : '{clue_word}' est INTERDIT car c'est un mot secret du jeu. Donne un mot DIFFÉRENT."
+                        response2 = await self._ai_respond(player, state, retry_prompt)
+                        clue_word = response2.get("clue", "indice")
+                        if isinstance(clue_word, str):
+                            clue_word = clue_word.strip().split()[0] if clue_word.strip() else "indice"
+                        reasoning = response2.get("reasoning", reasoning)
+                        # Si toujours interdit, forcer un remplacement
+                        if clue_word.lower() in forbidden:
+                            clue_word = "[censuré]"
+                            print(f"  [!] {player.name}: 2e tentative encore interdite, censuré.")
+
             player.clues_given.append(clue_word)
             player.reasoning_log.append({
                 "round": state.current_round,
